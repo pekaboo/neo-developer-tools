@@ -6,6 +6,8 @@ Live site: [Neo Developer Tools](https://pages.wangyitu.tech/neo-developer-tools
 
 **Featured:** [文本对比 · Text Set Compare](https://pages.wangyitu.tech/neo-developer-tools/tools/text-set-compare/) — compare multiple lists and highlight intersections and differences.
 
+**Featured:** [逐行差异 · Diff Studio](https://pages.wangyitu.tech/neo-developer-tools/tools/diff-studio/) — compare text, JSON, and code side by side, merge changes, and export a report.
+
 ---
 
 ## What this is

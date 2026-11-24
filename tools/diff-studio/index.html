@@ -1,0 +1,4360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diff Studio · 文本对比工具</title>
+    <meta name="description" content="在浏览器中逐行对比文本、JSON 和代码，查看、合并和导出差异。">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-base: #0B1120;
+            --bg-panel: #0F172A;
+            --bg-elevated: #1E293B;
+            --bg-hover: #334155;
+            --border: #1E293B;
+            --border-strong: #334155;
+            --text-primary: #F1F5F9;
+            --text-secondary: #94A3B8;
+            --text-muted: #64748B;
+            --primary: #3B82F6;
+            --primary-hover: #2563EB;
+            --primary-soft: rgba(59, 130, 246, 0.12);
+            --diff-del-bg: rgba(239, 68, 68, 0.22);
+            --diff-del-bg-strong: rgba(239, 68, 68, 0.42);
+            --diff-del-text: #FCA5A5;
+            --diff-del-marker: #EF4444;
+            --diff-add-bg: rgba(34, 197, 94, 0.22);
+            --diff-add-bg-strong: rgba(34, 197, 94, 0.42);
+            --diff-add-text: #86EFAC;
+            --diff-add-marker: #22C55E;
+            --diff-mod-bg: rgba(234, 179, 8, 0.18);
+            --diff-mod-bg-strong: rgba(234, 179, 8, 0.45);
+            --diff-mod-text: #FDE68A;
+            --diff-empty-bg: rgba(15, 23, 42, 0.55);
+            --font-mono-size: 13px;
+            --gutter-current-bg: rgba(59, 130, 246, 0.18);
+        }
+
+        /* ===== Light theme ===== */
+        body[data-theme="light"] {
+            --bg-base: #F8FAFC;
+            --bg-panel: #FFFFFF;
+            --bg-elevated: #F1F5F9;
+            --bg-hover: #E2E8F0;
+            --border: #E2E8F0;
+            --border-strong: #CBD5E1;
+            --text-primary: #0F172A;
+            --text-secondary: #475569;
+            --text-muted: #94A3B8;
+            --primary: #2563EB;
+            --primary-hover: #1D4ED8;
+            --primary-soft: rgba(37, 99, 235, 0.10);
+            --diff-del-bg: rgba(239, 68, 68, 0.14);
+            --diff-del-bg-strong: rgba(239, 68, 68, 0.28);
+            --diff-del-text: #B91C1C;
+            --diff-del-marker: #DC2626;
+            --diff-add-bg: rgba(34, 197, 94, 0.14);
+            --diff-add-bg-strong: rgba(34, 197, 94, 0.28);
+            --diff-add-text: #15803D;
+            --diff-add-marker: #16A34A;
+            --diff-mod-bg: rgba(234, 179, 8, 0.16);
+            --diff-mod-bg-strong: rgba(234, 179, 8, 0.30);
+            --diff-mod-text: #A16207;
+            --diff-empty-bg: rgba(241, 245, 249, 0.55);
+            --gutter-current-bg: rgba(37, 99, 235, 0.12);
+        }
+
+        body[data-theme="light"] .line-gutter {
+            background: rgba(241, 245, 249, 0.55);
+        }
+
+        body[data-theme="light"] .minimap {
+            background: rgba(226, 232, 240, 0.55);
+            border-left-color: rgba(15, 23, 42, 0.06);
+        }
+        body[data-theme="light"] .minimap-line.same {
+            background: rgba(71, 85, 105, 0.18);
+        }
+        body[data-theme="light"] .minimap-viewport {
+            background: rgba(71, 85, 105, 0.18);
+            box-shadow: inset 0 0 0 1px rgba(71, 85, 105, 0.28);
+        }
+        body[data-theme="light"] .minimap:hover .minimap-viewport,
+        body[data-theme="light"] .minimap.dragging .minimap-viewport {
+            background: rgba(59, 130, 246, 0.22);
+            box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.55),
+                        0 0 12px rgba(59, 130, 246, 0.25);
+        }
+
+        body[data-theme="light"] .topbar {
+            background: linear-gradient(180deg, #F1F5F9 0%, var(--bg-panel) 100%);
+        }
+
+        body[data-theme="light"] .render-line.same { color: var(--text-primary); }
+        body[data-theme="light"] .render-line .tok-key { color: #0369A1; }
+        body[data-theme="light"] .render-line .tok-string { color: #9A3412; }
+        body[data-theme="light"] .render-line .tok-number { color: #15803D; }
+        body[data-theme="light"] .render-line .tok-constant { color: #1D4ED8; }
+        body[data-theme="light"] .render-line .tok-comment { color: #4D7C0F; }
+        body[data-theme="light"] .render-line .tok-property { color: #BE185D; }
+        body[data-theme="light"] .render-line .tok-punct { color: #64748B; }
+        body[data-theme="light"] .render-line.del .tok-key { color: #075985; }
+        body[data-theme="light"] .render-line.del .tok-string { color: #B91C1C; }
+        body[data-theme="light"] .render-line.del .tok-property { color: #9F1239; }
+        body[data-theme="light"] .render-line.add .tok-key { color: #065F46; }
+        body[data-theme="light"] .render-line.add .tok-string { color: #166534; }
+        body[data-theme="light"] .render-line.add .tok-property { color: #065F46; }
+        body[data-theme="light"] .render-line.modify .tok-key { color: #0C4A6E; }
+        body[data-theme="light"] .render-line.modify .tok-string { color: #92400E; }
+        body[data-theme="light"] .render-line.modify .tok-property { color: #854D0E; }
+
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            background: var(--bg-base);
+            color: var(--text-primary);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft Yahei", sans-serif;
+            font-size: 14px;
+            display: flex;
+            flex-direction: column;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ===== Top bar ===== */
+        .topbar {
+            padding: 12px 20px;
+            background: linear-gradient(180deg, #111827 0%, var(--bg-panel) 100%);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-shrink: 0;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo {
+            width: 36px;
+            height: 36px;
+            border-radius: 9px;
+            background: linear-gradient(135deg, var(--primary) 0%, #8B5CF6 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.32);
+        }
+
+        .brand-text h1 {
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+            line-height: 1.2;
+        }
+
+        .brand-text span {
+            font-size: 10.5px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 0.08em;
+        }
+
+        .actions {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 7px 13px;
+            border: 1px solid var(--border-strong);
+            border-radius: 6px;
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.15s, border-color 0.15s, transform 0.05s;
+        }
+
+        .btn:hover {
+            background: var(--bg-hover);
+            border-color: #475569;
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn.primary {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: #fff;
+            box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn.primary:hover {
+            background: var(--primary-hover);
+            border-color: var(--primary-hover);
+        }
+
+        .btn.ghost {
+            background: transparent;
+            border-color: transparent;
+            color: var(--text-secondary);
+        }
+
+        .btn.ghost:hover {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+        }
+
+        .btn svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        /* ===== Stats bar ===== */
+        .stats-bar {
+            padding: 8px 20px;
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            font-size: 12px;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+
+        .stats-empty {
+            color: var(--text-muted);
+            font-family: inherit;
+        }
+
+        .stat {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-secondary);
+        }
+
+        .stat .badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 24px;
+            height: 20px;
+            padding: 0 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .stat.add .badge {
+            background: var(--diff-add-bg-strong);
+            color: var(--diff-add-text);
+        }
+
+        .stat.del .badge {
+            background: var(--diff-del-bg-strong);
+            color: var(--diff-del-text);
+        }
+
+        .stat.mod .badge {
+            background: var(--diff-mod-bg-strong);
+            color: var(--diff-mod-text);
+        }
+
+        .stat.same .badge {
+            background: rgba(148, 163, 184, 0.2);
+            color: var(--text-secondary);
+        }
+        .stat-copy-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            background: transparent;
+            color: var(--text-muted);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s;
+        }
+        .stat-copy-btn:hover {
+            color: var(--primary);
+            border-color: var(--primary);
+            background: rgba(96, 165, 250, 0.08);
+        }
+
+        .stats-bar .spacer {
+            flex: 1;
+        }
+
+        .toolbar-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        .checkbox {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            user-select: none;
+            color: var(--text-secondary);
+        }
+
+        .checkbox input {
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border: 1px solid var(--border-strong);
+            border-radius: 3px;
+            background: var(--bg-elevated);
+            cursor: pointer;
+            position: relative;
+            transition: all 0.15s;
+        }
+
+        .checkbox input:checked {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .checkbox input:checked::after {
+            content: '';
+            position: absolute;
+            left: 4px;
+            top: 1px;
+            width: 4px;
+            height: 8px;
+            border: solid #fff;
+            border-width: 0 2px 2px 0;
+            transform: rotate(45deg);
+        }
+
+        .switch {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            user-select: none;
+            color: var(--text-secondary);
+        }
+
+        .switch input {
+            appearance: none;
+            width: 30px;
+            height: 16px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            border-radius: 999px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+        }
+
+        .switch input::before {
+            content: '';
+            position: absolute;
+            top: 1px;
+            left: 1px;
+            width: 12px;
+            height: 12px;
+            background: var(--text-secondary);
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+
+        .switch input:checked {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .switch input:checked::before {
+            left: 15px;
+            background: #fff;
+        }
+
+        /* ===== Container ===== */
+        .container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            min-height: 0;
+            gap: 12px;
+            padding: 12px;
+            background: var(--bg-base);
+        }
+
+        .panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            background: var(--bg-panel);
+            border: 1px solid var(--border-strong);
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+        }
+
+        .panel-header {
+            padding: 8px 14px;
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .dot-blue {
+            background: #60A5FA;
+            box-shadow: 0 0 8px rgba(96, 165, 250, 0.6);
+        }
+
+        .dot-purple {
+            background: #A78BFA;
+            box-shadow: 0 0 8px rgba(167, 139, 250, 0.6);
+        }
+
+        .panel-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .panel-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            padding: 2px 7px;
+            background: var(--bg-elevated);
+            border-radius: 3px;
+        }
+
+        .panel-actions {
+            margin-left: auto;
+            display: flex;
+            gap: 2px;
+        }
+
+        .icon-btn {
+            width: 26px;
+            height: 26px;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            background: transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+        }
+
+        .icon-btn:hover {
+            background: var(--bg-elevated);
+            border-color: var(--border-strong);
+            color: var(--text-primary);
+        }
+
+        .icon-btn svg {
+            width: 13px;
+            height: 13px;
+        }
+
+        /* ===== Editor area (single-mode live diff, Beyond Compare style) ===== */
+        .editor-wrap {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+            min-height: 0;
+            background: var(--bg-panel);
+        }
+
+        /* 左侧行号 gutter */
+        .line-gutter {
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 46px;
+            padding: 14px 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 3;
+            background: rgba(11, 17, 32, 0.45);
+            border-right: 1px solid var(--border);
+            font-family: 'JetBrains Mono', Consolas, monospace;
+            font-size: 11px;
+            line-height: 1.65;
+            color: var(--text-muted);
+            text-align: right;
+        }
+
+        .gutter-inner {
+            will-change: transform;
+        }
+
+        .gutter-line {
+            height: 21.45px;
+            padding: 0 10px;
+            white-space: nowrap;
+        }
+
+        /* 渲染层：显示带差异色高亮的文本（在 textarea 下面） */
+        .render-layer {
+            position: absolute;
+            top: 0;
+            left: 46px;
+            right: 52px;
+            bottom: 0;
+            padding: 14px 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 1;
+            font-family: 'JetBrains Mono', Consolas, 'Microsoft Yahei', monospace;
+            font-size: 13px;
+            line-height: 1.65;
+            tab-size: 2;
+        }
+
+        .render-inner {
+            will-change: transform;
+        }
+
+        .render-line {
+            padding: 0 16px;
+            min-height: 21.45px;
+            white-space: pre;
+            background: transparent;
+        }
+
+        .render-line.del {
+            background: var(--diff-del-bg);
+            box-shadow: inset 2px 0 0 var(--diff-del-marker);
+        }
+
+        .render-line.add {
+            background: var(--diff-add-bg);
+            box-shadow: inset 2px 0 0 var(--diff-add-marker);
+        }
+
+        .render-line.modify {
+            background: var(--diff-mod-bg);
+            box-shadow: inset 2px 0 0 var(--diff-mod-text);
+        }
+
+        .char-del {
+            background: var(--diff-del-bg-strong);
+            border-radius: 2px;
+            text-decoration: line-through;
+            text-decoration-color: var(--diff-del-text);
+        }
+
+        .char-add {
+            background: var(--diff-add-bg-strong);
+            border-radius: 2px;
+        }
+
+        /* textarea:透明文字 + 可见 caret,浮在 render-layer 之上 */
+        textarea {
+            position: absolute;
+            top: 0;
+            left: 46px;
+            right: 52px;
+            bottom: 0;
+            width: auto;
+            height: auto;
+            padding: 14px 16px;
+            background: transparent;
+            color: transparent;
+            caret-color: var(--text-primary);
+            border: none;
+            outline: none;
+            font-family: 'JetBrains Mono', Consolas, 'Microsoft Yahei', monospace;
+            font-size: 13px;
+            line-height: 1.65;
+            resize: none;
+            white-space: pre;
+            tab-size: 2;
+            z-index: 2;
+        }
+
+        textarea::placeholder {
+            color: var(--text-muted);
+            -webkit-text-fill-color: var(--text-muted);
+        }
+
+        textarea::selection {
+            background: rgba(59, 130, 246, 0.35);
+            color: var(--text-primary);
+            -webkit-text-fill-color: var(--text-primary);
+        }
+
+        /* 隐藏原生滚动条:minimap 就是滚动条 */
+        * {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        *::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+            display: none;
+        }
+
+        /* ===== Syntax highlight tokens (VS Code Dark+ inspired) ===== */
+        .tok-key {
+            color: #9CDCFE;
+        }
+
+        .tok-string {
+            color: #CE9178;
+        }
+
+        .tok-number {
+            color: #B5CEA8;
+        }
+
+        .tok-constant {
+            color: #569CD6;
+        }
+
+        .tok-comment {
+            color: #6A9955;
+            font-style: italic;
+        }
+
+        .tok-property {
+            color: #DCDCAA;
+        }
+
+        .tok-punct {
+            color: #808080;
+        }
+
+        /* diff 行里的 token 颜色：在彩色背景上保证可读性 */
+        .render-line.del .tok-key { color: #CFFAFE; }
+        .render-line.del .tok-string { color: #FCA5A5; }
+        .render-line.del .tok-number { color: #FDE68A; }
+        .render-line.del .tok-property { color: #FDE68A; }
+        .render-line.del .tok-constant { color: #93C5FD; }
+        .render-line.del .tok-punct { color: #CBD5E1; }
+
+        .render-line.add .tok-key { color: #CFFAFE; }
+        .render-line.add .tok-string { color: #86EFAC; }
+        .render-line.add .tok-number { color: #FDE68A; }
+        .render-line.add .tok-property { color: #FDE68A; }
+        .render-line.add .tok-constant { color: #93C5FD; }
+        .render-line.add .tok-punct { color: #CBD5E1; }
+
+        .render-line.modify .tok-key { color: #CFFAFE; }
+        .render-line.modify .tok-string { color: #FDBA74; }
+        .render-line.modify .tok-number { color: #BEF264; }
+        .render-line.modify .tok-property { color: #FDE047; }
+        .render-line.modify .tok-constant { color: #93C5FD; }
+        .render-line.modify .tok-punct { color: #CBD5E1; }
+
+        /* ===== Empty state ===== */
+        .empty-state {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: var(--text-muted);
+            pointer-events: none;
+            padding: 20px;
+            text-align: center;
+            z-index: 4;
+        }
+
+        .empty-state .icon {
+            width: 44px;
+            height: 44px;
+            color: var(--text-muted);
+            opacity: 0.45;
+        }
+
+        .empty-state .title {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .empty-state .hint {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 0.05em;
+        }
+
+        /* ===== Drag overlay ===== */
+        .drag-overlay {
+            position: absolute;
+            inset: 0;
+            background: var(--primary-soft);
+            border: 2px dashed var(--primary);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            font-weight: 500;
+            pointer-events: none;
+            z-index: 10;
+            font-size: 13px;
+        }
+
+        .editor-wrap.dragging .drag-overlay {
+            display: flex;
+        }
+
+        /* ===== Minimap (always-on, IS the scrollbar) ===== */
+        .minimap {
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            width: 52px;
+            background: rgba(11, 17, 32, 0.55);
+            border-left: 1px solid rgba(255, 255, 255, 0.05);
+            overflow: hidden;
+            z-index: 5;
+            cursor: pointer;
+        }
+
+        .minimap-content {
+            position: absolute;
+            top: 0;
+            left: 8px;
+            right: 8px;
+            padding: 6px 0;
+            transform-origin: top left;
+        }
+
+        .minimap-line {
+            height: 3px;
+            margin: 0 0 1px;
+            border-radius: 1px;
+            background: rgba(148, 163, 184, 0.12);
+        }
+
+        .minimap-line.same {
+            background: rgba(148, 163, 184, 0.12);
+        }
+
+        .minimap-line.del {
+            background: #F87171;
+        }
+
+        .minimap-line.add {
+            background: #4ADE80;
+        }
+
+        .minimap-line.modify {
+            background: #FACC15;
+        }
+
+        .minimap-line.empty {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        /* 视口常驻可见：默认低饱和，hover/drag 时高亮 */
+        .minimap-viewport {
+            position: absolute;
+            left: 4px;
+            right: 4px;
+            background: rgba(148, 163, 184, 0.14);
+            border-radius: 3px;
+            pointer-events: none;
+            transition: background 0.12s ease, box-shadow 0.12s ease;
+            box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.20);
+        }
+
+        .minimap:hover .minimap-viewport,
+        .minimap.dragging .minimap-viewport {
+            background: rgba(96, 165, 250, 0.22);
+            box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.55),
+                        0 0 12px rgba(96, 165, 250, 0.25);
+        }
+
+        .minimap.dragging {
+            cursor: grabbing;
+        }
+
+        /* ===== Toast ===== */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            color: var(--text-primary);
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+            opacity: 0;
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: none;
+            z-index: 100;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .toast.show { pointer-events: auto; }
+        .toast .toast-action {
+            margin-left: 8px;
+            padding: 3px 10px;
+            background: transparent;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.15s;
+        }
+        .toast .toast-action:hover {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+
+        .toast.success {
+            border-color: var(--diff-add-marker);
+        }
+
+        .toast.error {
+            border-color: var(--diff-del-marker);
+        }
+
+        .toast svg {
+            width: 14px;
+            height: 14px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        kbd {
+            display: inline-block;
+            padding: 1px 5px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            border-radius: 3px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                transition: none !important;
+                animation: none !important;
+            }
+        }
+
+        /* ===== Mono font size variable ===== */
+        :root { --line-px: calc(var(--font-mono-size) * 1.65); }
+        .render-layer, .render-line, textarea, .line-gutter, .gutter-line {
+            font-size: var(--font-mono-size);
+            line-height: 1.65;
+        }
+        .render-line { min-height: var(--line-px) !important; }
+        .gutter-line { height: var(--line-px) !important; }
+        .render-line.collapsed { height: var(--line-px) !important; }
+
+        /* ===== Diff navigation ===== */
+        .nav-group {
+            display: inline-flex;
+            align-items: center;
+            gap: 0;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .nav-btn {
+            width: 28px; height: 26px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            transition: background 0.15s, color 0.15s;
+        }
+        .nav-btn:hover:not(:disabled) {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+        .nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+        .nav-btn svg { width: 13px; height: 13px; }
+        .nav-counter {
+            min-width: 52px;
+            text-align: center;
+            font-size: 11px;
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-muted);
+            padding: 0 6px;
+            border-left: 1px solid var(--border);
+            border-right: 1px solid var(--border);
+            line-height: 26px;
+            cursor: default;
+        }
+        .nav-counter.has-diff { color: var(--text-primary); }
+
+        /* ===== Stats proportion bar ===== */
+        .proportion-bar {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .prop-track {
+            width: 140px;
+            height: 8px;
+            background: var(--bg-elevated);
+            border-radius: 999px;
+            overflow: hidden;
+            display: flex;
+            border: 1px solid var(--border);
+        }
+        .prop-seg {
+            height: 100%;
+            transition: width 0.3s ease;
+            cursor: pointer;
+        }
+        .prop-seg.add { background: var(--diff-add-marker); }
+        .prop-seg.del { background: var(--diff-del-marker); }
+        .prop-seg.mod { background: var(--diff-mod-text); }
+        .prop-seg.same { background: rgba(148, 163, 184, 0.35); }
+
+        .stat { cursor: default; transition: opacity 0.15s; }
+        .stat.clickable { cursor: pointer; }
+        .stat.clickable:hover { opacity: 0.7; }
+
+        /* ===== Toolbar segmented divider ===== */
+        .toolbar-divider {
+            width: 1px;
+            height: 18px;
+            background: var(--border);
+            margin: 0 2px;
+        }
+
+        /* ===== Icon button variants (topbar utilities) ===== */
+        .icon-toggle {
+            width: 30px; height: 30px;
+            border: 1px solid var(--border-strong);
+            border-radius: 6px;
+            background: var(--bg-elevated);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            transition: all 0.15s;
+        }
+        .icon-toggle:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border-color: #475569;
+        }
+        .icon-toggle.active {
+            background: var(--primary-soft);
+            color: var(--primary);
+            border-color: var(--primary);
+        }
+        .icon-toggle svg { width: 14px; height: 14px; }
+
+        /* ===== Middle gutter (swap button) ===== */
+        .middle-gutter {
+            width: 32px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        .swap-btn {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            transition: all 0.2s;
+        }
+        .swap-btn:hover {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+            transform: rotate(180deg);
+        }
+        .swap-btn svg { width: 13px; height: 13px; }
+
+        /* ===== Merge layer (clickable merge arrows over diff lines) ===== */
+        .merge-layer {
+            position: absolute;
+            top: 0; left: 46px; right: 52px; bottom: 0;
+            pointer-events: none;
+            z-index: 3;
+            overflow: hidden;
+        }
+
+        /* 当前行高亮：跟随 caret，铺在 render-layer 上方但低于 textarea */
+        .active-line {
+            position: absolute;
+            left: 0; right: 0;
+            height: var(--line-px);
+            background: var(--gutter-current-bg);
+            pointer-events: none;
+            opacity: 0.55;
+            transition: top 0.06s linear;
+            z-index: 0;  /* render-layer 是 1，这层故意在其下，作为底色 */
+        }
+        /* 括号配对行：caret 旁是括号时，高亮匹配括号所在行 */
+        .bracket-pair-line {
+            position: absolute;
+            left: 0; right: 0;
+            height: var(--line-px);
+            background: rgba(250, 204, 21, 0.18);
+            border-left: 2px solid rgba(250, 204, 21, 0.7);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.12s, top 0.06s linear;
+            z-index: 0;
+        }
+        .bracket-pair-line.active { opacity: 1; }
+
+        .merge-inner {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            padding: 14px 0;
+            will-change: transform;
+        }
+        .merge-btn {
+            position: absolute;
+            right: 6px;
+            width: 22px; height: 22px;
+            border-radius: 5px;
+            border: 1px solid var(--border-strong);
+            background: var(--bg-elevated);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            pointer-events: auto;
+            opacity: 0.55;
+            transition: opacity 0.15s, background 0.15s, color 0.15s, transform 0.1s;
+            font-family: inherit;
+            padding: 0;
+        }
+        .editor-wrap:hover .merge-btn { opacity: 0.85; }
+        .merge-btn:hover {
+            opacity: 1 !important;
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+            transform: scale(1.08);
+        }
+        .merge-btn:active { transform: scale(0.95); }
+        .merge-btn svg { width: 12px; height: 12px; }
+        .merge-btn.to-right { color: var(--diff-add-text); }
+        .merge-btn.to-left { color: var(--diff-del-text); }
+
+        /* Collapse expand button (full-width, in merge-layer above textarea)
+           必须用不透明背景遮住下面的 textarea 透明文字，否则就是「掩耳盗铃」。 */
+        .collapse-expand-btn {
+            position: absolute;
+            left: 0; right: 0;
+            border: none;
+            border-top: 1px dashed var(--border-strong);
+            border-bottom: 1px dashed var(--border-strong);
+            background: var(--bg-panel);
+            color: var(--text-muted);
+            cursor: pointer;
+            pointer-events: auto;
+            -webkit-user-select: none;
+            user-select: none;
+            font-size: 11px;
+            font-style: italic;
+            font-family: inherit;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s, color 0.15s;
+        }
+        .collapse-expand-btn:hover {
+            background: rgba(96, 165, 250, 0.22);
+            color: var(--primary);
+        }
+
+        /* 单独展开后右侧的小「收起」pill：不遮文字，靠右贴边 */
+        .collapse-expand-btn.collapse-mode {
+            left: auto;
+            right: 4px;
+            width: 64px;
+            border: 1px solid var(--border-strong);
+            border-radius: 4px;
+            background: var(--bg-elevated);
+            color: var(--text-secondary);
+            font-size: 10px;
+            font-style: normal;
+            padding: 0 6px;
+        }
+        .collapse-expand-btn.collapse-mode:hover {
+            background: rgba(96, 165, 250, 0.22);
+            color: var(--primary);
+            border-color: rgba(96, 165, 250, 0.55);
+        }
+
+        /* Current diff highlight */
+        .render-line.current-diff {
+            box-shadow: inset 3px 0 0 var(--primary), 0 0 0 1px var(--primary) inset;
+            background: var(--primary-soft) !important;
+        }
+
+        /* ===== Collapse placeholder ===== */
+        .render-line.collapsed {
+            height: 21.45px;
+            background: rgba(148, 163, 184, 0.06);
+            color: var(--text-muted);
+            font-style: italic;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            pointer-events: auto;
+            border-top: 1px dashed var(--border);
+            border-bottom: 1px dashed var(--border);
+        }
+        .render-line.collapsed:hover {
+            background: rgba(148, 163, 184, 0.12);
+            color: var(--text-secondary);
+        }
+
+        /* ===== Wrap mode ===== */
+        body.wrap-mode .render-line { white-space: pre-wrap; word-break: break-word; }
+        body.wrap-mode textarea { white-space: pre-wrap; word-break: break-word; }
+
+        /* ===== Search overlay (per panel) ===== */
+        .search-overlay {
+            position: absolute;
+            top: 8px; right: 84px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            border-radius: 8px;
+            padding: 6px;
+            display: none;
+            align-items: center;
+            gap: 4px;
+            z-index: 8;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+        }
+        .search-overlay.active { display: flex; }
+        .search-overlay input {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            width: 180px;
+            outline: none;
+            font-family: inherit;
+        }
+        .search-overlay input:focus { border-color: var(--primary); }
+        .search-overlay .search-count {
+            font-size: 10px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+            padding: 0 4px;
+            min-width: 36px;
+            text-align: center;
+        }
+        .search-overlay .search-btn {
+            width: 22px; height: 22px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            border-radius: 3px;
+            cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .search-overlay .search-btn:hover { background: var(--bg-hover); color: var(--text-primary); }
+        .search-overlay .search-btn svg { width: 12px; height: 12px; }
+        .search-overlay .replace-input { width: 140px; }
+        .search-overlay .replace-btn {
+            width: auto;
+            padding: 0 10px;
+            font-size: 11px;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        .search-overlay .replace-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+        mark.search-hit {
+            background: rgba(250, 204, 21, 0.35);
+            color: inherit;
+            border-radius: 2px;
+        }
+        mark.search-hit.active {
+            background: rgba(250, 204, 21, 0.7);
+            color: #000;
+        }
+
+        /* merge 闪光反馈：merge 按钮被点后，对应 diff 块闪一下 */
+        @keyframes mergeFlash {
+            0%   { box-shadow: inset 0 0 0 2px var(--primary), 0 0 12px var(--primary); }
+            100% { box-shadow: inset 0 0 0 0 transparent, 0 0 0 transparent; }
+        }
+        .render-line.merge-flash {
+            animation: mergeFlash 0.6s ease-out;
+        }
+
+        /* ===== Reset confirm modal ===== */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .modal-backdrop.active { display: flex; opacity: 1; }
+        .modal {
+            background: var(--bg-panel);
+            border: 1px solid var(--border-strong);
+            border-radius: 12px;
+            padding: 24px;
+            min-width: 360px;
+            max-width: 90vw;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            transform: translateY(8px);
+            transition: transform 0.2s;
+        }
+        .modal-backdrop.active .modal { transform: translateY(0); }
+        .modal h3 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+            display: flex; align-items: center; gap: 8px;
+        }
+        .modal p {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-bottom: 18px;
+            line-height: 1.5;
+        }
+        .modal-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            margin-top: 18px;
+        }
+        .shortcut-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin: 12px 0 18px;
+            font-size: 13px;
+        }
+        .shortcut-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+            border-bottom: 1px dashed var(--border);
+        }
+        .shortcut-row:last-child { border-bottom: none; }
+        .shortcut-row span { color: var(--text-secondary); }
+        .shortcut-row kbd {
+            display: inline-block;
+            padding: 2px 6px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            border-radius: 3px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-primary);
+            margin-left: 4px;
+        }
+        .modal .btn.danger {
+            background: #DC2626;
+            border-color: #DC2626;
+            color: #fff;
+        }
+        .modal .btn.danger:hover {
+            background: #B91C1C;
+            border-color: #B91C1C;
+        }
+        .modal .btn.ghost-danger {
+            background: transparent;
+            border-color: rgba(220, 38, 38, 0.4);
+            color: #F87171;
+        }
+        .modal .btn.ghost-danger:hover {
+            background: rgba(220, 38, 38, 0.1);
+            border-color: #DC2626;
+            color: #FCA5A5;
+        }
+        /* ===== Ignore rules modal ===== */
+        .rules-section {
+            margin-top: 14px;
+        }
+        .rules-section-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .rules-textarea {
+            width: 100%;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            border-radius: 6px;
+            padding: 10px 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            line-height: 1.6;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.15s;
+            box-sizing: border-box;
+        }
+        .rules-textarea:focus {
+            border-color: var(--accent);
+        }
+        .rules-presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        .rules-chip {
+            font-size: 11px;
+            padding: 3px 10px;
+            background: transparent;
+            border: 1px dashed var(--border-strong);
+            color: var(--text-secondary);
+            border-radius: 999px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .rules-chip:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            border-style: solid;
+        }
+
+        /* ===== Legend popover ===== */
+        .legend-pop {
+            position: absolute;
+            top: 100%;
+            margin-top: 8px;
+            right: 0;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            border-radius: 8px;
+            padding: 12px 14px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+            display: none;
+            z-index: 50;
+            min-width: 200px;
+        }
+        .legend-pop.active { display: block; }
+        .legend-pop .lg-row {
+            display: flex; align-items: center; gap: 8px;
+            padding: 4px 0;
+        }
+        .legend-pop .lg-swatch {
+            width: 24px; height: 12px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+        .legend-pop .lg-swatch.add { background: var(--diff-add-bg-strong); border-left: 2px solid var(--diff-add-marker); }
+        .legend-pop .lg-swatch.del { background: var(--diff-del-bg-strong); border-left: 2px solid var(--diff-del-marker); }
+        .legend-pop .lg-swatch.mod { background: var(--diff-mod-bg-strong); border-left: 2px solid var(--diff-mod-text); }
+        .legend-pop .lg-swatch.char-add { background: var(--diff-add-bg-strong); }
+        .legend-pop .lg-swatch.char-del { background: var(--diff-del-bg-strong); text-decoration: line-through; }
+
+        /* ===== Export menu ===== */
+        .export-menu {
+            position: absolute;
+            top: 100%;
+            margin-top: 6px;
+            right: 0;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            border-radius: 8px;
+            padding: 4px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+            display: none;
+            z-index: 50;
+            min-width: 200px;
+        }
+        .export-menu.active { display: block; }
+        .export-menu button {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 8px 10px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-family: inherit;
+            cursor: pointer;
+            border-radius: 5px;
+            text-align: left;
+        }
+        .export-menu button:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+        .export-menu button svg { width: 13px; height: 13px; }
+        .export-menu .kbd-hint {
+            margin-left: auto;
+            font-size: 10px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* ===== Empty state CTAs ===== */
+        .empty-state .cta-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            pointer-events: auto;
+        }
+        .empty-state .cta {
+            padding: 6px 12px;
+            background: var(--bg-elevated);
+            border: 1px solid var(--border-strong);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-family: inherit;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.15s;
+        }
+        .empty-state .cta:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border-color: var(--primary);
+        }
+        .empty-state .cta.primary {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+        .empty-state .cta.primary:hover {
+            background: var(--primary-hover);
+        }
+        .empty-state .cta svg { width: 12px; height: 12px; }
+
+        /* ===== Wrap indicator hidden file input ===== */
+        .file-input-hidden {
+            position: absolute;
+            width: 0; height: 0;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* ===== Spinner for compare in progress ===== */
+        .compare-pending {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-muted);
+            font-size: 11px;
+        }
+        .compare-pending::before {
+            content: '';
+            width: 8px; height: 8px;
+            border: 1.5px solid var(--text-muted);
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+
+<body data-theme="dark">
+    <header class="topbar">
+        <div class="brand">
+            <div class="logo">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 4L3 7v10l6 3M15 4l6 3v10l-6 3M9 4v16M15 4v16" />
+                </svg>
+            </div>
+            <div class="brand-text">
+                <h1>Diff Studio</h1>
+                <span>TEXT · JSON · CODE</span>
+            </div>
+        </div>
+        <div class="actions">
+            <div class="nav-group" id="navGroup" title="跳转差异 (Alt+↑/↓)">
+                <button class="nav-btn" id="prevDiffBtn" title="上一个差异 (Alt+↑)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                </button>
+                <span class="nav-counter" id="navCounter">0 / 0</span>
+                <button class="nav-btn" id="nextDiffBtn" title="下一个差异 (Alt+↓)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+            </div>
+
+            <span class="toolbar-divider"></span>
+
+            <button class="btn ghost" id="sampleBtn" title="加载示例数据">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                </svg>
+                示例
+            </button>
+            <button class="btn" id="formatBtn" title="智能格式化 (Ctrl+Shift+F)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 10H3M21 6H3M21 14H3M21 18H10" />
+                </svg>
+                格式化
+            </button>
+            <button class="btn primary" id="refreshBtn" title="立即重新对比 (Ctrl/Cmd+Enter)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="23 4 23 10 17 10" />
+                    <polyline points="1 20 1 14 7 14" />
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+                刷新对比
+            </button>
+            <button class="btn ghost" id="saveBtn" title="保存当前聚焦侧 (Ctrl/Cmd+S)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                    <polyline points="17 21 17 13 7 13 7 21"/>
+                    <polyline points="7 3 7 8 15 8"/>
+                </svg>
+                保存
+            </button>
+
+            <span class="toolbar-divider"></span>
+
+            <div style="position:relative">
+                <button class="btn ghost" id="exportBtn" title="导出差异">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7 10 12 15 17 10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    导出
+                </button>
+                <div class="export-menu" id="exportMenu">
+                    <button data-export="unified">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+                        Unified Diff
+                        <span class="kbd-hint">.patch</span>
+                    </button>
+                    <button data-export="html">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                        HTML 报告
+                        <span class="kbd-hint">.html</span>
+                    </button>
+                    <button data-export="markdown">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        Markdown 表格
+                        <span class="kbd-hint">.md</span>
+                    </button>
+                </div>
+            </div>
+
+            <button class="btn ghost danger-ghost" id="resetBtn" title="清空所有">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="1 4 1 10 7 10" />
+                    <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+                </svg>
+                重置
+            </button>
+
+            <span class="toolbar-divider"></span>
+
+            <button class="icon-toggle" id="fontDecBtn" title="缩小字号">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 12 19 12"/></svg>
+            </button>
+            <button class="icon-toggle" id="fontIncBtn" title="放大字号">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="12 5 12 19"/><polyline points="5 12 19 12"/></svg>
+            </button>
+            <button class="icon-toggle" id="themeBtn" title="切换主题 (亮/暗)">
+                <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                </svg>
+            </button>
+            <div style="position:relative">
+                <button class="icon-toggle" id="legendBtn" title="图例">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                </button>
+                <div class="legend-pop" id="legendPop">
+                    <div class="lg-row"><span class="lg-swatch add"></span>新增行</div>
+                    <div class="lg-row"><span class="lg-swatch del"></span>删除行</div>
+                    <div class="lg-row"><span class="lg-swatch mod"></span>修改行</div>
+                    <div class="lg-row"><span class="lg-swatch char-add"></span>字符级新增</div>
+                    <div class="lg-row"><span class="lg-swatch char-del"></span>字符级删除</div>
+                </div>
+            </div>
+            <button class="icon-toggle" id="helpBtn" title="键盘快捷键 (?)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <div class="stats-bar">
+        <div id="statsContent">
+            <span class="stats-empty">输入即自动对比 · <kbd>⌘/Ctrl</kbd> + <kbd>Enter</kbd> 立即刷新</span>
+        </div>
+        <div class="spacer"></div>
+        <div class="toolbar-group">
+            <label class="checkbox" title="忽略行首/行尾空白">
+                <input type="checkbox" id="ignoreWs"> 忽略空白
+            </label>
+            <label class="checkbox" title="忽略大小写">
+                <input type="checkbox" id="ignoreCase"> 忽略大小写
+            </label>
+            <label class="checkbox" title="JSON 按 key 排序后再对比（忽略键顺序）">
+                <input type="checkbox" id="structuralToggle"> 结构化对比
+            </label>
+            <label class="checkbox" title="折叠连续 ≥3 行相同段">
+                <input type="checkbox" id="collapseToggle" checked> 折叠相同
+            </label>
+            <button class="btn ghost" id="ignoreRulesBtn" title="语法忽略规则：匹配的正则视为相同（如日期、UUID）" style="padding:4px 10px;font-size:11px">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                    <polyline points="22,6 12,13 2,6"/>
+                </svg>
+                忽略规则
+            </button>
+            <span class="toolbar-divider"></span>
+            <label class="switch" title="输入后自动重新对比">
+                <input type="checkbox" id="autoCompareToggle" checked>
+                <span>自动对比</span>
+            </label>
+            <label class="switch" title="切换两侧滚动联动">
+                <input type="checkbox" id="syncToggle" checked>
+                <span>滚动联动</span>
+            </label>
+            <label class="switch" title="长行自动换行">
+                <input type="checkbox" id="wrapToggle">
+                <span>换行</span>
+            </label>
+        </div>
+    </div>
+
+    <main class="container">
+        <section class="panel" data-side="left">
+            <header class="panel-header">
+                <span class="dot dot-blue"></span>
+                <span class="panel-title">原始文本</span>
+                <span class="panel-meta" id="leftMeta">0 行 · 0 字</span>
+                <div class="panel-actions">
+                    <button class="icon-btn" data-action="open" data-target="left" title="打开文件">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" data-action="paste" data-target="left" title="从剪贴板粘贴">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                            <rect x="8" y="2" width="8" height="4" rx="1" />
+                        </svg>
+                    </button>
+                    <button class="icon-btn" data-action="copy" data-target="left" title="复制全部">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" />
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                        </svg>
+                    </button>
+                    <button class="icon-btn" data-action="search" data-target="left" title="查找 (Ctrl+F)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" data-action="clear" data-target="left" title="清空">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
+                </div>
+            </header>
+            <div class="editor-wrap" id="leftWrap">
+                <div class="line-gutter">
+                    <div class="gutter-inner" id="leftGutterInner"></div>
+                </div>
+                <div class="render-layer">
+                    <div class="active-line" id="leftActiveLine"></div>
+                    <div class="bracket-pair-line" id="leftBracketLine"></div>
+                    <div class="render-inner" id="leftRenderInner"></div>
+                </div>
+                <textarea id="leftInput" placeholder="粘贴原始文本 / JSON，或拖入文件..." spellcheck="false"></textarea>
+                <div class="merge-layer"><div class="merge-inner" id="leftMergeInner"></div></div>
+                <div class="minimap" id="leftMinimap" title="点击跳转 · 拖动快速滚动">
+                    <div class="minimap-content" id="leftMinimapContent"></div>
+                    <div class="minimap-viewport" id="leftMinimapViewport"></div>
+                </div>
+                <div class="search-overlay" id="leftSearch">
+                    <input type="text" placeholder="查找..." id="leftSearchInput">
+                    <span class="search-count" id="leftSearchCount">0/0</span>
+                    <button class="search-btn" data-search-action="prev" data-target="left" title="上一个">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                    </button>
+                    <button class="search-btn" data-search-action="next" data-target="left" title="下一个">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <button class="search-btn" data-search-action="close" data-target="left" title="关闭">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                    <input type="text" placeholder="替换为..." id="leftReplaceInput" class="replace-input">
+                    <button class="search-btn replace-btn" data-search-action="replace" data-target="left" title="替换当前 (Ctrl/Cmd+Alt+R)">替换</button>
+                    <button class="search-btn replace-btn" data-search-action="replace-all" data-target="left" title="全部替换">全部</button>
+                </div>
+                <div class="empty-state" id="leftEmpty">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                    </svg>
+                    <div class="title">原始文本</div>
+                    <div class="hint">paste · drag · drop</div>
+                    <div class="cta-row">
+                        <button class="cta primary" data-empty-action="sample">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            加载示例
+                        </button>
+                        <button class="cta" data-empty-action="paste-left">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+                            粘贴
+                        </button>
+                        <button class="cta" data-empty-action="open-left">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                            打开文件
+                        </button>
+                    </div>
+                </div>
+                <div class="drag-overlay">松开以载入文件</div>
+            </div>
+        </section>
+
+        <div class="middle-gutter">
+            <button class="swap-btn" id="swapBtn" title="交换两侧内容">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="17 1 21 5 17 9"/>
+                    <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                    <polyline points="7 23 3 19 7 15"/>
+                    <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+                </svg>
+            </button>
+        </div>
+
+        <section class="panel" data-side="right">
+            <header class="panel-header">
+                <span class="dot dot-purple"></span>
+                <span class="panel-title">对比文本</span>
+                <span class="panel-meta" id="rightMeta">0 行 · 0 字</span>
+                <div class="panel-actions">
+                    <button class="icon-btn" data-action="open" data-target="right" title="打开文件">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" data-action="paste" data-target="right" title="从剪贴板粘贴">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                            <rect x="8" y="2" width="8" height="4" rx="1" />
+                        </svg>
+                    </button>
+                    <button class="icon-btn" data-action="copy" data-target="right" title="复制全部">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" />
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                        </svg>
+                    </button>
+                    <button class="icon-btn" data-action="search" data-target="right" title="查找 (Ctrl+F)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                        </svg>
+                    </button>
+                    <button class="icon-btn" data-action="clear" data-target="right" title="清空">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                    </button>
+                </div>
+            </header>
+            <div class="editor-wrap" id="rightWrap">
+                <div class="line-gutter">
+                    <div class="gutter-inner" id="rightGutterInner"></div>
+                </div>
+                <div class="render-layer">
+                    <div class="active-line" id="rightActiveLine"></div>
+                    <div class="bracket-pair-line" id="rightBracketLine"></div>
+                    <div class="render-inner" id="rightRenderInner"></div>
+                </div>
+                <textarea id="rightInput" placeholder="粘贴对比文本 / JSON，或拖入文件..." spellcheck="false"></textarea>
+                <div class="merge-layer"><div class="merge-inner" id="rightMergeInner"></div></div>
+                <div class="minimap" id="rightMinimap" title="点击跳转 · 拖动快速滚动">
+                    <div class="minimap-content" id="rightMinimapContent"></div>
+                    <div class="minimap-viewport" id="rightMinimapViewport"></div>
+                </div>
+                <div class="search-overlay" id="rightSearch">
+                    <input type="text" placeholder="查找..." id="rightSearchInput">
+                    <span class="search-count" id="rightSearchCount">0/0</span>
+                    <button class="search-btn" data-search-action="prev" data-target="right" title="上一个">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+                    </button>
+                    <button class="search-btn" data-search-action="next" data-target="right" title="下一个">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <button class="search-btn" data-search-action="close" data-target="right" title="关闭">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                    <input type="text" placeholder="替换为..." id="rightReplaceInput" class="replace-input">
+                    <button class="search-btn replace-btn" data-search-action="replace" data-target="right" title="替换当前 (Ctrl/Cmd+Alt+R)">替换</button>
+                    <button class="search-btn replace-btn" data-search-action="replace-all" data-target="right" title="全部替换">全部</button>
+                </div>
+                <div class="empty-state" id="rightEmpty">
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                    </svg>
+                    <div class="title">对比文本</div>
+                    <div class="hint">paste · drag · drop</div>
+                    <div class="cta-row">
+                        <button class="cta primary" data-empty-action="sample">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                            加载示例
+                        </button>
+                        <button class="cta" data-empty-action="paste-right">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+                            粘贴
+                        </button>
+                        <button class="cta" data-empty-action="open-right">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                            打开文件
+                        </button>
+                    </div>
+                </div>
+                <div class="drag-overlay">松开以载入文件</div>
+            </div>
+        </section>
+    </main>
+
+    <input type="file" id="fileInput" class="file-input-hidden">
+
+    <!-- Reset confirm modal -->
+    <div class="modal-backdrop" id="resetModal">
+        <div class="modal">
+            <h3>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                确认清空两侧内容？
+            </h3>
+            <p>该操作将清空原始文本与对比文本的全部内容，<strong>无法撤销</strong>。如需保留，请先复制到剪贴板。</p>
+            <div class="modal-actions">
+                <button class="btn ghost" id="resetCancelBtn">取消</button>
+                <button class="btn danger" id="resetConfirmBtn">确认清空</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-backdrop" id="helpModal">
+        <div class="modal" style="max-width: 480px">
+            <h3>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+                    <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                键盘快捷键
+            </h3>
+            <div class="shortcut-list">
+                <div class="shortcut-row"><span>下一/上一 diff</span><kbd>Alt</kbd>+<kbd>↓</kbd>/<kbd>↑</kbd></div>
+                <div class="shortcut-row"><span>Merge 到右/左</span><kbd>Alt</kbd>+<kbd>→</kbd>/<kbd>←</kbd></div>
+                <div class="shortcut-row"><span>刷新对比</span><kbd>Ctrl/Cmd</kbd>+<kbd>Enter</kbd></div>
+                <div class="shortcut-row"><span>保存当前侧</span><kbd>Ctrl/Cmd</kbd>+<kbd>S</kbd></div>
+                <div class="shortcut-row"><span>格式化 JSON/XML</span><kbd>Ctrl/Cmd</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd></div>
+                <div class="shortcut-row"><span>替换当前</span><kbd>Ctrl/Cmd</kbd>+<kbd>Alt</kbd>+<kbd>R</kbd></div>
+                <div class="shortcut-row"><span>关闭浮层</span><kbd>Esc</kbd></div>
+                <div class="shortcut-row"><span>本帮助</span><kbd>?</kbd></div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn primary" id="helpCloseBtn">知道了</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-backdrop" id="ignoreRulesModal">
+        <div class="modal" style="width: 600px; max-width: calc(100vw - 32px)">
+            <h3>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                    <polyline points="22,6 12,13 2,6"/>
+                </svg>
+                语法忽略规则
+            </h3>
+            <p>每行一条正则表达式。匹配的内容在两侧都会被替换为相同占位符，对比时「视为相同」，展示原文不变。行内 <code style="background:var(--bg-elevated);padding:1px 5px;border-radius:3px;font-size:11px"># 后为注释</code>。</p>
+            <div class="rules-section">
+                <div class="rules-section-label">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="22,6 12,13 2,6"/></svg>
+                    常用预设（点击追加）
+                </div>
+                <div class="rules-presets">
+                    <button class="rules-chip" data-preset="date">+ 日期</button>
+                    <button class="rules-chip" data-preset="uuid">+ UUID</button>
+                    <button class="rules-chip" data-preset="number">+ 数字</button>
+                    <button class="rules-chip" data-preset="whitespace">+ 行尾空白</button>
+                </div>
+            </div>
+            <div class="rules-section">
+                <div class="rules-section-label">正则规则</div>
+                <textarea id="ignoreRulesInput" class="rules-textarea" rows="7" placeholder="\d{4}-\d{2}-\d{2}  # 日期&#10;[0-9a-f-]{36}  # UUID&#10;^\s*//.*$  # 单行注释"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn danger ghost-danger" id="ignoreRulesClearBtn">清空</button>
+                <button class="btn ghost" id="ignoreRulesCancelBtn">取消</button>
+                <button class="btn primary" id="ignoreRulesSaveBtn">应用并刷新</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ===================== Element refs =====================
+        const leftInput = document.getElementById('leftInput');
+        const rightInput = document.getElementById('rightInput');
+        const leftRenderInner = document.getElementById('leftRenderInner');
+        const rightRenderInner = document.getElementById('rightRenderInner');
+        const leftGutterInner = document.getElementById('leftGutterInner');
+        const rightGutterInner = document.getElementById('rightGutterInner');
+        const leftMergeInner = document.getElementById('leftMergeInner');
+        const rightMergeInner = document.getElementById('rightMergeInner');
+        const leftEmpty = document.getElementById('leftEmpty');
+        const rightEmpty = document.getElementById('rightEmpty');
+        const leftMeta = document.getElementById('leftMeta');
+        const rightMeta = document.getElementById('rightMeta');
+        const statsContent = document.getElementById('statsContent');
+        const syncToggle = document.getElementById('syncToggle');
+        const autoCompareToggle = document.getElementById('autoCompareToggle');
+        const ignoreWs = document.getElementById('ignoreWs');
+        const ignoreCase = document.getElementById('ignoreCase');
+        const structuralToggle = document.getElementById('structuralToggle');
+        const collapseToggle = document.getElementById('collapseToggle');
+        const wrapToggle = document.getElementById('wrapToggle');
+        const toastEl = document.getElementById('toast');
+
+        const leftMinimap = document.getElementById('leftMinimap');
+        const rightMinimap = document.getElementById('rightMinimap');
+        const leftMinimapContent = document.getElementById('leftMinimapContent');
+        const rightMinimapContent = document.getElementById('rightMinimapContent');
+        const leftMinimapViewport = document.getElementById('leftMinimapViewport');
+        const rightMinimapViewport = document.getElementById('rightMinimapViewport');
+
+        const sampleBtn = document.getElementById('sampleBtn');
+        const formatBtn = document.getElementById('formatBtn');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const swapBtn = document.getElementById('swapBtn');
+        const prevDiffBtn = document.getElementById('prevDiffBtn');
+        const nextDiffBtn = document.getElementById('nextDiffBtn');
+        const navCounter = document.getElementById('navCounter');
+        const themeBtn = document.getElementById('themeBtn');
+        const themeIcon = document.getElementById('themeIcon');
+        const legendBtn = document.getElementById('legendBtn');
+        const legendPop = document.getElementById('legendPop');
+        const exportBtn = document.getElementById('exportBtn');
+        const exportMenu = document.getElementById('exportMenu');
+        const fontIncBtn = document.getElementById('fontIncBtn');
+        const fontDecBtn = document.getElementById('fontDecBtn');
+        const fileInput = document.getElementById('fileInput');
+        const resetModal = document.getElementById('resetModal');
+        const resetConfirmBtn = document.getElementById('resetConfirmBtn');
+        const resetCancelBtn = document.getElementById('resetCancelBtn');
+
+        const leftSearch = document.getElementById('leftSearch');
+        const rightSearch = document.getElementById('rightSearch');
+        const leftSearchInput = document.getElementById('leftSearchInput');
+        const rightSearchInput = document.getElementById('rightSearchInput');
+        const leftSearchCount = document.getElementById('leftSearchCount');
+        const rightSearchCount = document.getElementById('rightSearchCount');
+        const leftReplaceInput = document.getElementById('leftReplaceInput');
+        const rightReplaceInput = document.getElementById('rightReplaceInput');
+        const saveBtn = document.getElementById('saveBtn');
+        const helpBtn = document.getElementById('helpBtn');
+        const helpModal = document.getElementById('helpModal');
+        const helpCloseBtn = document.getElementById('helpCloseBtn');
+        const leftBracketLine = document.getElementById('leftBracketLine');
+        const rightBracketLine = document.getElementById('rightBracketLine');
+        const ignoreRulesBtn = document.getElementById('ignoreRulesBtn');
+        const ignoreRulesModal = document.getElementById('ignoreRulesModal');
+        const ignoreRulesInput = document.getElementById('ignoreRulesInput');
+        const ignoreRulesClearBtn = document.getElementById('ignoreRulesClearBtn');
+        const ignoreRulesCancelBtn = document.getElementById('ignoreRulesCancelBtn');
+        const ignoreRulesSaveBtn = document.getElementById('ignoreRulesSaveBtn');
+
+        const leftActiveLine = document.getElementById('leftActiveLine');
+        const rightActiveLine = document.getElementById('rightActiveLine');
+
+        // ===================== App state namespace =====================
+        // 集中所有可变状态，告别散落的 window.__ 全局变量。
+        // - state: 业务状态（diff 结果 + UI 当前态）
+        // - cache: 派生缓存（避免重复计算）
+        // - schedule: 调度句柄（rAF / debounce / save timer）
+        const App = {
+            state: {
+                rawOps: [],            // 未折叠的 ops（compare 输出）
+                foldedOps: [],         // 折叠后的 ops（渲染用）
+                expandedRegions: new Set(),  // 单独展开的 region id 集合
+                diffBlocks: [],        // 导航用：[{ leftTop, rightTop, type }]
+                currentDiffIdx: -1,    // 当前 diff 高亮索引
+                ignoreRules: []        // 忽略规则：每项 = { source, regex }
+            },
+            cache: {
+                minimapSignature: { left: '', right: '' }  // 同结构跳过 DOM 重排
+            },
+            schedule: {
+                compareFrame: null,        // rAF 句柄
+                compareDebounceTimer: null, // 大文件 debounce timer
+                saveTimer: null            // localStorage 防抖 timer
+            }
+        };
+
+        // 两侧 textarea 互相同步滚动
+        const scrollables = [leftInput, rightInput];
+
+        // ===================== Scroll Sync =====================
+        // 单模式实时对比：textarea 滚动 → 同步 render-layer / gutter（transform）
+        //                                   → 同步另一侧 textarea（如开启联动）
+        //                                   → 刷新两侧 minimap viewport
+        let syncScrollEnabled = true;
+        let scrolling = false;
+
+        function applyRenderTransform(side, top, left) {
+            const renderInner = side === 'left' ? leftRenderInner : rightRenderInner;
+            const gutterInner = side === 'left' ? leftGutterInner : rightGutterInner;
+            const mergeInner = side === 'left' ? leftMergeInner : rightMergeInner;
+            renderInner.style.transform = 'translate(' + (-left) + 'px,' + (-top) + 'px)';
+            // gutter 不需要横向滚动，只跟纵向
+            gutterInner.style.transform = 'translateY(' + (-top) + 'px)';
+            // merge 按钮也只跟纵向
+            mergeInner.style.transform = 'translateY(' + (-top) + 'px)';
+        }
+
+        function syncFromSource(source) {
+            const top = source.scrollTop;
+            const left = source.scrollLeft;
+
+            // 1. 本侧 render-layer / gutter 跟着滚动
+            if (source === leftInput) applyRenderTransform('left', top, left);
+            else if (source === rightInput) applyRenderTransform('right', top, left);
+
+            // 2. 另一侧 textarea 联动
+            if (syncScrollEnabled && !scrolling) {
+                scrolling = true;
+                for (const el of scrollables) {
+                    if (el === source) continue;
+                    el.scrollTop = top;
+                    el.scrollLeft = left;
+                }
+                requestAnimationFrame(() => { scrolling = false; });
+            }
+
+            // 3. 两侧 minimap viewport 都刷新
+            updateMinimapViewport('left');
+            updateMinimapViewport('right');
+        }
+
+        scrollables.forEach(el => {
+            el.addEventListener('scroll', () => syncFromSource(el));
+        });
+
+        syncToggle.addEventListener('change', () => {
+            syncScrollEnabled = syncToggle.checked;
+        });
+
+        autoCompareToggle.addEventListener('change', () => {
+            if (!autoCompareToggle.checked) {
+                cancelAutoCompare();
+            } else if (leftInput.value || rightInput.value) {
+                scheduleAutoCompare();
+            }
+        });
+
+        // ===================== Minimap =====================
+        // VS Code 风格缩略图：把 diff 行状态映射成彩色细条
+        function buildMinimapLines(ops, side) {
+            const arr = [];
+            for (const op of ops) {
+                if (op.type === 'same') {
+                    arr.push('same');
+                } else if (op.type === 'del') {
+                    for (let i = 0; i < op.lines.length; i++) {
+                        arr.push(side === 'left' ? 'del' : 'empty');
+                    }
+                } else if (op.type === 'add') {
+                    for (let i = 0; i < op.lines.length; i++) {
+                        arr.push(side === 'right' ? 'add' : 'empty');
+                    }
+                } else if (op.type === 'modify') {
+                    const max = Math.max(op.delLines.length, op.addLines.length);
+                    for (let i = 0; i < max; i++) {
+                        const hasThis = side === 'left' ? i < op.delLines.length : i < op.addLines.length;
+                        arr.push(hasThis ? 'modify' : 'empty');
+                    }
+                }
+            }
+            return arr;
+        }
+
+        // 缓存 minimap 内容签名：相同结构跳过 DOM 重建，避免输入时闪烁
+        // （签名存放在 App.cache.minimapSignature）
+
+        function renderMinimap(side, ops) {
+            const minimap = side === 'left' ? leftMinimap : rightMinimap;
+            const content = side === 'left' ? leftMinimapContent : rightMinimapContent;
+            const minimapHeight = minimap.clientHeight || 400;
+
+            const lines = buildMinimapLines(ops, side);
+            const total = lines.length;
+
+            // 自适应：行多则压缩，行少则固定 4px 一行（含 1px gap）
+            const perLine = total > 0
+                ? Math.min(4, Math.max(1, (minimapHeight - 8) / total))
+                : 4;
+
+            // 签名 = 行状态序列 + 行高；未变化则只更新视口，不重写 DOM
+            const sig = lines.join(',') + '|' + perLine + '|' + minimapHeight;
+            if (sig === App.cache.minimapSignature[side]) {
+                updateMinimapViewport(side);
+                return;
+            }
+            App.cache.minimapSignature[side] = sig;
+
+            // 用 DocumentFragment 一次性插入，减少重排闪烁
+            const frag = document.createDocumentFragment();
+            for (const s of lines) {
+                const div = document.createElement('div');
+                div.className = 'minimap-line ' + s;
+                div.style.height = perLine + 'px';
+                frag.appendChild(div);
+            }
+            content.replaceChildren(frag);
+
+            content.dataset.totalLines = total;
+            content.dataset.perLine = perLine;
+
+            updateMinimapViewport(side);
+        }
+
+        function updateMinimapViewport(side) {
+            const minimap = side === 'left' ? leftMinimap : rightMinimap;
+            const content = side === 'left' ? leftMinimapContent : rightMinimapContent;
+            const viewport = side === 'left' ? leftMinimapViewport : rightMinimapViewport;
+            const sourceEl = side === 'left' ? leftInput : rightInput;
+
+            const total = parseInt(content.dataset.totalLines || '0', 10);
+            const perLine = parseFloat(content.dataset.perLine || '4');
+            if (total === 0) {
+                // 无内容也保持视口可见（顶部条状），避免 minimap 看似消失
+                viewport.style.top = '0px';
+                viewport.style.height = Math.max(24, minimap.clientHeight * 0.25) + 'px';
+                return;
+            }
+
+            const contentHeight = total * (perLine + 1);
+            const minimapHeight = minimap.clientHeight;
+            const sourceScrollMax = sourceEl.scrollHeight - sourceEl.clientHeight;
+
+            if (sourceScrollMax <= 0) {
+                // 内容不超出，视口占满整张 minimap 内容区
+                viewport.style.top = '0px';
+                viewport.style.height = Math.min(contentHeight, minimapHeight) + 'px';
+                return;
+            }
+
+            // 主视图可视行数 ÷ 总行数 = minimap 视口占比
+            const sourceLineHeight = 21.45;
+            const visibleLines = sourceEl.clientHeight / sourceLineHeight;
+            const visibleRatio = Math.max(0.05, Math.min(1, visibleLines / total));
+
+            // 内容能塞下：视口跟着内容走；塞不下：视口跟着 minimap 走
+            const trackHeight = Math.max(contentHeight, minimapHeight);
+            const viewportHeight = Math.max(20, visibleRatio * Math.min(contentHeight, minimapHeight));
+            const available = Math.max(0, trackHeight - viewportHeight);
+            const scrollRatio = sourceEl.scrollTop / sourceScrollMax;
+            const viewportTop = scrollRatio * available;
+
+            viewport.style.top = viewportTop + 'px';
+            viewport.style.height = viewportHeight + 'px';
+        }
+
+        function setupMinimapDrag(side) {
+            const minimap = side === 'left' ? leftMinimap : rightMinimap;
+            const sourceEl = side === 'left' ? leftInput : rightInput;
+
+            let dragging = false;
+
+            function scrollToPointer(clientY) {
+                const rect = minimap.getBoundingClientRect();
+                const ratio = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+                const sourceScrollMax = sourceEl.scrollHeight - sourceEl.clientHeight;
+                if (sourceScrollMax > 0) {
+                    sourceEl.scrollTop = ratio * sourceScrollMax;
+                }
+            }
+
+            minimap.addEventListener('mousedown', (e) => {
+                dragging = true;
+                minimap.classList.add('dragging');
+                scrollToPointer(e.clientY);
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!dragging) return;
+                scrollToPointer(e.clientY);
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (dragging) {
+                    dragging = false;
+                    minimap.classList.remove('dragging');
+                }
+            });
+        }
+
+        setupMinimapDrag('left');
+        setupMinimapDrag('right');
+
+        // 窗口尺寸变化时重渲染 minimap 内容
+        let resizeTimer;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(() => {
+                if (App.state.foldedOps) {
+                    renderMinimap('left', App.state.foldedOps);
+                    renderMinimap('right', App.state.foldedOps);
+                }
+            }, 150);
+        });
+
+        // ===================== Active line highlight =====================
+        // 跟踪两侧 caret 所在行，渲染一条淡色横条铺在 render-layer 下层（z-index 0）
+        // 括号配对：标准栈算法，支持 ()[]{}
+        function findMatchingBracket(text, pos) {
+            const open = '([{', close = ')]}';
+            const pair = { ')': '(', ']': '[', '}': '{' };
+            // 看 pos 或 pos-1 处的字符
+            let c = text[pos];
+            let basePos = pos;
+            if (open.indexOf(c) === -1 && close.indexOf(c) === -1) {
+                c = text[pos - 1];
+                basePos = pos - 1;
+            }
+            if (c === undefined) return -1;
+            if (open.indexOf(c) !== -1) {
+                // 向后找匹配的 close
+                const target = close[open.indexOf(c)];
+                let depth = 0;
+                for (let i = basePos + 1; i < text.length; i++) {
+                    const ch = text[i];
+                    if (ch === c) depth++;
+                    else if (ch === target) {
+                        if (depth === 0) return i;
+                        depth--;
+                    }
+                }
+                return -1;
+            } else if (close.indexOf(c) !== -1) {
+                // 向前找匹配的 open
+                const target = pair[c];
+                let depth = 0;
+                for (let i = basePos - 1; i >= 0; i--) {
+                    const ch = text[i];
+                    if (ch === c) depth++;
+                    else if (ch === target) {
+                        if (depth === 0) return i;
+                        depth--;
+                    }
+                }
+                return -1;
+            }
+            return -1;
+        }
+
+        function updateActiveLine(side) {
+            const input = side === 'left' ? leftInput : rightInput;
+            const el = side === 'left' ? leftActiveLine : rightActiveLine;
+            const bkEl = side === 'left' ? leftBracketLine : rightBracketLine;
+            const lineHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--font-mono-size')) * 1.65 || 21.45;
+            const padTop = 14;
+            const caretY = input.selectionStart;
+            const text = input.value;
+            const upto = text.substring(0, caretY);
+            const lineNum = upto.split('\n').length - 1;
+            const top = padTop + lineNum * lineHeight - input.scrollTop;
+            el.style.top = top + 'px';
+            el.style.display = (top >= -lineHeight && top <= input.clientHeight) ? '' : 'none';
+
+            // 括号配对：仅当 selection 为空（真 caret 位置）时尝试
+            const matchPos = (input.selectionStart === input.selectionEnd)
+                ? findMatchingBracket(text, caretY)
+                : -1;
+            if (matchPos >= 0) {
+                const matchUpto = text.substring(0, matchPos);
+                const matchLineNum = matchUpto.split('\n').length - 1;
+                const matchTop = padTop + matchLineNum * lineHeight - input.scrollTop;
+                bkEl.style.top = matchTop + 'px';
+                const visible = (matchTop >= -lineHeight && matchTop <= input.clientHeight);
+                bkEl.classList.toggle('active', visible);
+                bkEl.style.display = visible ? '' : 'none';
+            } else {
+                bkEl.classList.remove('active');
+            }
+        }
+        leftInput.addEventListener('keyup', () => updateActiveLine('left'));
+        leftInput.addEventListener('click', () => updateActiveLine('left'));
+        leftInput.addEventListener('input', () => updateActiveLine('left'));
+        rightInput.addEventListener('keyup', () => updateActiveLine('right'));
+        rightInput.addEventListener('click', () => updateActiveLine('right'));
+        rightInput.addEventListener('input', () => updateActiveLine('right'));
+        leftInput.addEventListener('scroll', () => updateActiveLine('left'));
+        rightInput.addEventListener('scroll', () => updateActiveLine('right'));
+        // 键盘箭头移动也要更新（keyup 不够：按住箭头时持续触发）
+        leftInput.addEventListener('keyup', () => updateActiveLine('left'), true);
+        rightInput.addEventListener('keyup', () => updateActiveLine('right'), true);
+
+        // ===================== Save merged result =====================
+        // 下载当前聚焦侧的 textarea 内容。聚焦侧 = document.activeElement，否则默认左侧。
+        // 自动按内容嗅探扩展名：合法 JSON → .json，否则 .txt
+        function saveFocusedSide() {
+            const focused = document.activeElement === rightInput ? rightInput : leftInput;
+            const content = focused.value;
+            if (!content) {
+                toast('当前侧为空，无内容可保存', 'error');
+                return;
+            }
+            let ext = 'txt';
+            try { JSON.parse(content); ext = 'json'; } catch (e) { /* not JSON */ }
+            const side = focused === rightInput ? 'right' : 'left';
+            const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'diff-' + side + '-' + Date.now() + '.' + ext;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            toast('已保存 ' + side + ' 侧 .' + ext, 'success');
+        }
+        saveBtn.addEventListener('click', saveFocusedSide);
+
+        // ===================== Ignore rules =====================
+        // 解析多行文本（每行一条正则，# 后为注释），返回编译后的 RegExp 数组
+        function parseIgnoreRules(text) {
+            const out = [];
+            const lines = text.split('\n');
+            for (let raw of lines) {
+                // 去 # 注释（正则字面量里的 # 不支持，约定写正则时避开裸 #）
+                const hashIdx = raw.indexOf('#');
+                let src = (hashIdx >= 0 ? raw.substring(0, hashIdx) : raw).trim();
+                if (!src) continue;
+                try {
+                    out.push({ source: src, regex: new RegExp(src, 'g') });
+                } catch (e) {
+                    toast('正则无效：' + src, 'error');
+                    return null;
+                }
+            }
+            return out;
+        }
+        // 把一行文本按规则替换为占位符（保留长度，避免视觉错位）
+        function normalizeLineWithRules(line, rules) {
+            if (!rules || rules.length === 0) return line;
+            let out = line;
+            for (const r of rules) {
+                r.regex.lastIndex = 0;
+                out = out.replace(r.regex, (m) => '×'.repeat(m.length || 1));
+            }
+            return out;
+        }
+
+        const PRESET_RULES = {
+            date: '\\d{4}-\\d{2}-\\d{2}',
+            uuid: '[0-9a-fA-F-]{36}',
+            number: '\\b\\d+(\\.\\d+)?\\b',
+            whitespace: '\\s+$'
+        };
+
+        // 打开浮层：回填当前规则
+        ignoreRulesBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            legendPop.classList.remove('active');
+            exportMenu.classList.remove('active');
+            ignoreRulesInput.value = App.state.ignoreRules.map(r => r.source).join('\n');
+            ignoreRulesModal.classList.add('active');
+        });
+        ignoreRulesCancelBtn.addEventListener('click', () => {
+            ignoreRulesModal.classList.remove('active');
+        });
+        ignoreRulesModal.addEventListener('click', (e) => {
+            if (e.target === ignoreRulesModal) ignoreRulesModal.classList.remove('active');
+        });
+        ignoreRulesClearBtn.addEventListener('click', () => {
+            ignoreRulesInput.value = '';
+            ignoreRulesInput.focus();
+        });
+        ignoreRulesSaveBtn.addEventListener('click', () => {
+            const parsed = parseIgnoreRules(ignoreRulesInput.value);
+            if (parsed === null) return;  // 解析失败已 toast
+            App.state.ignoreRules = parsed;
+            ignoreRulesModal.classList.remove('active');
+            saveState();
+            runCompare();
+            const n = parsed.length;
+            toast(n === 0 ? '已清空忽略规则' : '已应用 ' + n + ' 条规则', 'success');
+        });
+        // 预设：追加到末尾（避免重复）
+        document.querySelectorAll('[data-preset]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const key = btn.dataset.preset;
+                const src = PRESET_RULES[key];
+                if (!src) return;
+                const cur = ignoreRulesInput.value.split('\n').filter(s => s.trim());
+                if (cur.indexOf(src) !== -1) {
+                    toast('已存在该规则', '');
+                    return;
+                }
+                cur.push(src);
+                ignoreRulesInput.value = cur.join('\n');
+            });
+        });
+
+        // ===================== Keyboard shortcuts =====================
+        // 全局快捷键。textarea 内的输入键（字母/数字）不带修饰键时跳过，避免影响打字。
+        // 修饰键组合：Alt+arrow (diff 导航 + merge), Ctrl/Cmd+Enter (刷新), Ctrl/Cmd+S (保存),
+        // Ctrl/Cmd+Shift+F (格式化), Esc (关浮层)
+        document.addEventListener('keydown', (e) => {
+            const mod = e.metaKey || e.ctrlKey;
+            // Esc：关闭任意打开的浮层
+            if (e.key === 'Escape') {
+                [legendPop, exportMenu].forEach(pop => pop.classList.remove('open'));
+                if (helpModal.classList.contains('active')) { closeHelp(); return; }
+                if (leftSearch.classList.contains('active')) {
+                    leftSearch.classList.remove('active');
+                    leftInput.focus();
+                } else if (rightSearch.classList.contains('active')) {
+                    rightSearch.classList.remove('active');
+                    rightInput.focus();
+                }
+                if (resetModal.classList.contains('open')) resetModal.classList.remove('open');
+                return;
+            }
+
+            // ? → 打开快捷键帮助（Shift+/ 或 单独 ?，仅当焦点不在 input/textarea 时）
+            if (e.key === '?' || (e.shiftKey && e.key === '/')) {
+                const tag = document.activeElement && document.activeElement.tagName;
+                if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
+                    e.preventDefault();
+                    openHelp();
+                    return;
+                }
+            }
+
+            // Ctrl/Cmd+Enter → 刷新对比
+            if (mod && e.key === 'Enter') {
+                e.preventDefault();
+                refreshBtn.click();
+                return;
+            }
+            // Ctrl/Cmd+S → 保存
+            if (mod && !e.shiftKey && (e.key === 's' || e.key === 'S')) {
+                e.preventDefault();
+                saveFocusedSide();
+                return;
+            }
+            // Ctrl/Cmd+Shift+F → 格式化
+            if (mod && e.shiftKey && (e.key === 'f' || e.key === 'F')) {
+                e.preventDefault();
+                formatBtn.click();
+                return;
+            }
+            // Ctrl/Cmd+Alt+R → 替换当前（聚焦侧 search 已打开时）
+            if (mod && e.altKey && (e.key === 'r' || e.key === 'R')) {
+                e.preventDefault();
+                const side = document.activeElement === rightSearchInput || rightSearch.classList.contains('active') ? 'right' : 'left';
+                if ((side === 'left' ? leftSearch : rightSearch).classList.contains('active')) {
+                    replaceCurrent(side);
+                }
+                return;
+            }
+
+            // Alt+ArrowDown/Up → 下一/上一个 diff
+            if (e.altKey && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+                e.preventDefault();
+                jumpToDiff(App.state.currentDiffIdx + (e.key === 'ArrowDown' ? 1 : -1));
+                return;
+            }
+
+            // Alt+ArrowRight/Left → 把当前 diff merge 到右/左侧
+            // 找到当前 diff 块对应的 merge 按钮，触发点击
+            if (e.altKey && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
+                e.preventDefault();
+                const dir = e.key === 'ArrowRight' ? 'to-right' : 'to-left';
+                const targetSide = dir === 'to-right' ? 'left' : 'right';
+                const block = App.state.diffBlocks[App.state.currentDiffIdx];
+                if (!block) {
+                    toast('没有当前 diff 块', 'error');
+                    return;
+                }
+                const inner = targetSide === 'left' ? leftMergeInner : rightMergeInner;
+                const topKey = targetSide === 'left' ? 'leftTop' : 'rightTop';
+                // 找最接近 block top 的 merge-btn
+                const btns = inner.querySelectorAll('.merge-btn');
+                let target = null;
+                let minDelta = Infinity;
+                btns.forEach(b => {
+                    const top = parseFloat(b.style.top);
+                    const delta = Math.abs(top - block[topKey]);
+                    if (delta < minDelta) { minDelta = delta; target = b; }
+                });
+                if (target && target.dataset.dir === dir) {
+                    target.click();
+                } else {
+                    toast('当前 diff 块不支持该方向 merge', 'error');
+                }
+                return;
+            }
+        });
+
+        // ===================== Toast =====================
+        let toastTimer;
+        const tickSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+        const warnSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+        const infoSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>';
+
+        function toast(msg, type = '') {
+            const icon = type === 'success' ? tickSvg : type === 'error' ? warnSvg : infoSvg;
+            toastEl.innerHTML = icon + '<span>' + msg + '</span>';
+            toastEl.className = 'toast show ' + type;
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                toastEl.className = 'toast';
+            }, 2200);
+        }
+        // 带 action 按钮的 toast：5s 内可点击触发回调（用于 merge 撤销）
+        function toastAction(msg, actionLabel, onAction, type = 'success') {
+            const icon = type === 'success' ? tickSvg : type === 'error' ? warnSvg : infoSvg;
+            toastEl.innerHTML = icon + '<span>' + msg + '</span>' +
+                '<button class="toast-action" id="toastActionBtn">' + actionLabel + '</button>';
+            toastEl.className = 'toast show ' + type;
+            clearTimeout(toastTimer);
+            const btn = document.getElementById('toastActionBtn');
+            if (btn) {
+                btn.addEventListener('click', () => {
+                    try { onAction(); } finally {
+                        toastEl.className = 'toast';
+                        clearTimeout(toastTimer);
+                    }
+                });
+            }
+            toastTimer = setTimeout(() => {
+                toastEl.className = 'toast';
+            }, 5000);
+        }
+
+        // ===================== Meta + Empty State =====================
+        function updateMeta() {
+            const lv = leftInput.value;
+            const rv = rightInput.value;
+            const ll = lv === '' ? 0 : lv.split('\n').length;
+            const rl = rv === '' ? 0 : rv.split('\n').length;
+            leftMeta.textContent = ll + ' 行 · ' + lv.length + ' 字';
+            rightMeta.textContent = rl + ' 行 · ' + rv.length + ' 字';
+
+            const leftFocused = document.activeElement === leftInput;
+            const rightFocused = document.activeElement === rightInput;
+            leftEmpty.style.display = (lv || leftFocused) ? 'none' : '';
+            rightEmpty.style.display = (rv || rightFocused) ? 'none' : '';
+        }
+
+        // ===================== Auto Compare (single render path) =====================
+        // 不再有「输入态 vs 预览态」两条渲染路径：输入 → rAF 调度 → runCompare → renderSideLive
+        // 小输入用 requestAnimationFrame（同帧内更新，~16ms 无感）；大输入降级为 debounce 防卡顿。
+        // 调度句柄存放在 App.schedule.compareFrame / App.schedule.compareDebounceTimer
+        const LARGE_INPUT_LINES = 1500;
+        const LARGE_INPUT_DEBOUNCE_MS = 120;
+
+        function scheduleAutoCompare() {
+            if (!autoCompareToggle.checked) return;
+            if (!leftInput.value && !rightInput.value) return;
+
+            const totalLines =
+                (leftInput.value === '' ? 0 : leftInput.value.split('\n').length) +
+                (rightInput.value === '' ? 0 : rightInput.value.split('\n').length);
+
+            // 大输入：debounce 防卡顿
+            if (totalLines > LARGE_INPUT_LINES) {
+                if (App.schedule.compareFrame) {
+                    cancelAnimationFrame(App.schedule.compareFrame);
+                    App.schedule.compareFrame = null;
+                }
+                clearTimeout(App.schedule.compareDebounceTimer);
+                App.schedule.compareDebounceTimer = setTimeout(() => {
+                    runCompare({ silent: true });
+                }, LARGE_INPUT_DEBOUNCE_MS);
+                return;
+            }
+
+            // 小输入：rAF 同帧调度，coalesce 连击
+            clearTimeout(App.schedule.compareDebounceTimer);
+            if (App.schedule.compareFrame) return;
+            App.schedule.compareFrame = requestAnimationFrame(() => {
+                App.schedule.compareFrame = null;
+                runCompare({ silent: true });
+            });
+        }
+
+        function cancelAutoCompare() {
+            clearTimeout(App.schedule.compareDebounceTimer);
+            if (App.schedule.compareFrame) {
+                cancelAnimationFrame(App.schedule.compareFrame);
+                App.schedule.compareFrame = null;
+            }
+        }
+
+        function handleTextInput() {
+            updateMeta();
+            // 两侧都清空时重置可视层
+            if (!leftInput.value && !rightInput.value) {
+                clearAll();
+                cancelAutoCompare();
+                return;
+            }
+            scheduleAutoCompare();
+        }
+
+        leftInput.addEventListener('input', handleTextInput);
+        rightInput.addEventListener('input', handleTextInput);
+        leftInput.addEventListener('focus', updateMeta);
+        leftInput.addEventListener('blur', updateMeta);
+        rightInput.addEventListener('focus', updateMeta);
+        rightInput.addEventListener('blur', updateMeta);
+
+        // ===================== Panel actions =====================
+        document.querySelectorAll('[data-action]').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const action = btn.dataset.action;
+                const target = btn.dataset.target;
+                const ta = target === 'left' ? leftInput : rightInput;
+                if (action === 'paste') {
+                    try {
+                        const text = await navigator.clipboard.readText();
+                        ta.value = text;
+                        handleTextInput();
+                        saveState();
+                        toast('已粘贴', 'success');
+                    } catch {
+                        ta.focus();
+                        toast('请手动粘贴 (Ctrl+V)', 'error');
+                    }
+                } else if (action === 'copy') {
+                    if (!ta.value) {
+                        toast('内容为空', 'error');
+                        return;
+                    }
+                    try {
+                        await navigator.clipboard.writeText(ta.value);
+                        toast('已复制', 'success');
+                    } catch {
+                        ta.select();
+                        document.execCommand('copy');
+                        toast('已复制', 'success');
+                    }
+                } else if (action === 'clear') {
+                    ta.value = '';
+                    handleTextInput();
+                    saveState();
+                    toast('已清空');
+                } else if (action === 'open') {
+                    fileInputTarget = target;
+                    fileInput.click();
+                } else if (action === 'search') {
+                    openSearch(target);
+                }
+            });
+        });
+
+        // ===================== Drag & Drop =====================
+        [document.getElementById('leftWrap'), document.getElementById('rightWrap')].forEach(wrap => {
+            const ta = wrap.querySelector('textarea');
+            let dragCounter = 0;
+
+            wrap.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                dragCounter++;
+                wrap.classList.add('dragging');
+            });
+            wrap.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            });
+            wrap.addEventListener('dragleave', () => {
+                dragCounter--;
+                if (dragCounter <= 0) {
+                    dragCounter = 0;
+                    wrap.classList.remove('dragging');
+                }
+            });
+            wrap.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dragCounter = 0;
+                wrap.classList.remove('dragging');
+                const file = e.dataTransfer.files[0];
+                if (!file) return;
+                if (file.size > 1024 * 1024 * 2) {
+                    toast('文件过大 (>2MB)', 'error');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = () => {
+                    ta.value = reader.result;
+                    handleTextInput();
+                    toast('已载入 ' + file.name, 'success');
+                };
+                reader.onerror = () => toast('读取失败', 'error');
+                reader.readAsText(file);
+            });
+        });
+
+        // ===================== Smart Format (JSON / XML / HTML) =====================
+        // 智能格式化：尝试 JSON → XML/HTML → 失败
+        function tryFormatJSON(text) {
+            try { return JSON.stringify(JSON.parse(text), null, 2); } catch (e) { return null; }
+        }
+        function tryFormatXml(text) {
+            // 简单 XML/HTML 美化：基于 < 标签层级缩进
+            if (!/<[\/!?]?[\w:]+/.test(text)) return null;
+            try {
+                let formatted = '';
+                let indent = '';
+                const re = /(<[^>]+>|[^<]+)/g;
+                const tokens = text.match(re) || [];
+                for (let raw of tokens) {
+                    const t = raw.trim();
+                    if (!t) continue;
+                    if (t.startsWith('</')) {
+                        indent = indent.slice(2);
+                        formatted += indent + t + '\n';
+                    } else if (t.startsWith('<') && !t.startsWith('<!') && !t.startsWith('<?') && !t.startsWith('<img') && !t.startsWith('<br') && !t.endsWith('/>')) {
+                        // 简单判断是否自闭合
+                        if (/<\/[\w:]+>$/.test(t)) {
+                            formatted += indent + t + '\n';
+                        } else {
+                            formatted += indent + t + '\n';
+                            indent += '  ';
+                        }
+                    } else {
+                        formatted += indent + t + '\n';
+                    }
+                }
+                return formatted.trim();
+            } catch (e) {
+                return null;
+            }
+        }
+        function tryFormatSmart(text) {
+            const trimmed = text.trim();
+            if (!trimmed) return null;
+            // JSON
+            if (trimmed[0] === '{' || trimmed[0] === '[') {
+                const r = tryFormatJSON(text);
+                if (r !== null) return { result: r, lang: 'JSON' };
+            }
+            // XML / HTML
+            if (trimmed[0] === '<') {
+                const r = tryFormatXml(text);
+                if (r !== null) return { result: r, lang: 'XML/HTML' };
+            }
+            // 兜底再试 JSON
+            const r2 = tryFormatJSON(text);
+            if (r2 !== null) return { result: r2, lang: 'JSON' };
+            return null;
+        }
+
+        formatBtn.addEventListener('click', () => {
+            let ok = 0, fail = 0, empty = 0, langs = [];
+            [leftInput, rightInput].forEach(ta => {
+                if (!ta.value.trim()) { empty++; return; }
+                const r = tryFormatSmart(ta.value);
+                if (r !== null) { ta.value = r.result; ok++; langs.push(r.lang); }
+                else { fail++; }
+            });
+            updateMeta();
+            if (ok > 0 && fail === 0) toast('已格式化 ' + ok + ' 侧 (' + [...new Set(langs)].join('/') + ')', 'success');
+            else if (ok > 0 && fail > 0) toast('部分成功 · ' + ok + ' 成功, ' + fail + ' 失败', 'error');
+            else if (fail > 0) toast('无法识别格式 (支持 JSON / XML / HTML)', 'error');
+            else toast('两侧均为空');
+
+            if (ok > 0) {
+                saveState();
+                cancelAutoCompare();
+                runCompare({ silent: true });
+            }
+        });
+
+        // ===================== Sample Data =====================
+        const sampleLeft =
+            '{\n' +
+            '  "user": {\n' +
+            '    "id": 10086,\n' +
+            '    "name": "Alice",\n' +
+            '    "email": "alice@example.com",\n' +
+            '    "roles": ["admin", "editor"],\n' +
+            '    "profile": {\n' +
+            '      "age": 28,\n' +
+            '      "city": "Shanghai",\n' +
+            '      "timezone": "Asia/Shanghai"\n' +
+            '    },\n' +
+            '    "settings": {\n' +
+            '      "theme": "dark",\n' +
+            '      "notifications": true\n' +
+            '    }\n' +
+            '  },\n' +
+            '  "version": "1.0.0",\n' +
+            '  "active": true\n' +
+            '}';
+
+        const sampleRight =
+            '{\n' +
+            '  "user": {\n' +
+            '    "id": 10086,\n' +
+            '    "name": "Alice Zhang",\n' +
+            '    "email": "alice@example.com",\n' +
+            '    "roles": ["admin", "editor", "viewer"],\n' +
+            '    "profile": {\n' +
+            '      "age": 29,\n' +
+            '      "city": "Hangzhou",\n' +
+            '      "timezone": "Asia/Shanghai"\n' +
+            '    },\n' +
+            '    "settings": {\n' +
+            '      "theme": "dark",\n' +
+            '      "notifications": true,\n' +
+            '      "language": "zh-CN"\n' +
+            '    }\n' +
+            '  },\n' +
+            '  "version": "1.1.0",\n' +
+            '  "active": true,\n' +
+            '  "lastLoginAt": "2026-06-12T08:00:00Z"\n' +
+            '}';
+
+        sampleBtn.addEventListener('click', () => {
+            leftInput.value = sampleLeft;
+            rightInput.value = sampleRight;
+            updateMeta();
+            toast('已加载示例', 'success');
+            setTimeout(() => runCompare({ silent: true }), 80);
+        });
+
+        // ===================== Diff Algorithm =====================
+        // 行级归一化：根据用户选项预处理（仅用于比较，不影响展示原文）
+        function normalize(line) {
+            let s = line;
+            if (ignoreWs.checked) s = s.trim();
+            if (ignoreCase.checked) s = s.toLowerCase();
+            return s;
+        }
+
+        // 行级 LCS，输出并行数组 oldDiff / newDiff
+        function diffLinesLCS(oldArr, newArr) {
+            const oldNorm = oldArr.map(normalize);
+            const newNorm = newArr.map(normalize);
+            const oldLen = oldNorm.length;
+            const newLen = newNorm.length;
+            const dp = Array(oldLen + 1).fill(0).map(() => Array(newLen + 1).fill(0));
+            for (let i = 1; i <= oldLen; i++) {
+                for (let j = 1; j <= newLen; j++) {
+                    if (oldNorm[i - 1] === newNorm[j - 1]) {
+                        dp[i][j] = dp[i - 1][j - 1] + 1;
+                    } else {
+                        dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+                    }
+                }
+            }
+            let i = oldLen, j = newLen;
+            const oldDiff = [];
+            const newDiff = [];
+            while (i > 0 || j > 0) {
+                if (i > 0 && j > 0 && oldNorm[i - 1] === newNorm[j - 1]) {
+                    oldDiff.unshift({ type: 'same', text: oldArr[i - 1] });
+                    newDiff.unshift({ type: 'same', text: newArr[j - 1] });
+                    i--; j--;
+                } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+                    newDiff.unshift({ type: 'add', text: newArr[j - 1] });
+                    oldDiff.unshift({ type: 'empty', text: '' });
+                    j--;
+                } else if (i > 0) {
+                    oldDiff.unshift({ type: 'del', text: oldArr[i - 1] });
+                    newDiff.unshift({ type: 'empty', text: '' });
+                    i--;
+                }
+            }
+            return { oldDiff, newDiff };
+        }
+
+        // 将并行数组归并为统一 op 列表；相邻 del+add 视为 modify
+        function groupModify(oldDiff, newDiff) {
+            const ops = [];
+            const len = oldDiff.length;
+            let i = 0;
+            let oldLineNo = 0;
+            let newLineNo = 0;
+            while (i < len) {
+                const o = oldDiff[i];
+                if (o.type === 'same') {
+                    oldLineNo++;
+                    newLineNo++;
+                    ops.push({ type: 'same', text: o.text, oldLineNo, newLineNo });
+                    i++;
+                } else if (o.type === 'del') {
+                    const delLines = [];
+                    const startOld = oldLineNo + 1;
+                    while (i < len && oldDiff[i].type === 'del') {
+                        oldLineNo++;
+                        delLines.push(oldDiff[i].text);
+                        i++;
+                    }
+                    const addLines = [];
+                    const startNew = newLineNo + 1;
+                    while (i < len && oldDiff[i].type === 'empty' && newDiff[i].type === 'add') {
+                        newLineNo++;
+                        addLines.push(newDiff[i].text);
+                        i++;
+                    }
+                    if (addLines.length > 0) {
+                        ops.push({
+                            type: 'modify',
+                            delLines, addLines,
+                            startOld, startNew,
+                            oldEnd: oldLineNo, newEnd: newLineNo
+                        });
+                    } else {
+                        ops.push({ type: 'del', lines: delLines, startLine: startOld, endLine: oldLineNo });
+                    }
+                } else if (o.type === 'empty' && newDiff[i].type === 'add') {
+                    const addLines = [];
+                    const startNew = newLineNo + 1;
+                    while (i < len && oldDiff[i].type === 'empty' && newDiff[i].type === 'add') {
+                        newLineNo++;
+                        addLines.push(newDiff[i].text);
+                        i++;
+                    }
+                    ops.push({ type: 'add', lines: addLines, startLine: startNew, endLine: newLineNo });
+                } else {
+                    i++;
+                }
+            }
+            return ops;
+        }
+
+        // 字符/单词级 LCS：用于修改行的 inline 高亮
+        function tokenize(str) {
+            // 以单词与符号分组，保留空白，便于阅读
+            return str.split(/(\s+|[A-Za-z0-9_]+|[^\sA-Za-z0-9_]+)/).filter(t => t !== '');
+        }
+
+        function diffWords(a, b) {
+            const aT = tokenize(a);
+            const bT = tokenize(b);
+            const n = aT.length, m = bT.length;
+            const dp = Array(n + 1).fill(0).map(() => Array(m + 1).fill(0));
+            for (let i = 1; i <= n; i++) {
+                for (let j = 1; j <= m; j++) {
+                    if (aT[i - 1] === bT[j - 1]) dp[i][j] = dp[i - 1][j - 1] + 1;
+                    else dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
+                }
+            }
+            const ops = [];
+            let i = n, j = m;
+            while (i > 0 || j > 0) {
+                if (i > 0 && j > 0 && aT[i - 1] === bT[j - 1]) {
+                    ops.unshift({ type: 'same', text: aT[i - 1] });
+                    i--; j--;
+                } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
+                    ops.unshift({ type: 'add', text: bT[j - 1] });
+                    j--;
+                } else {
+                    ops.unshift({ type: 'del', text: aT[i - 1] });
+                    i--;
+                }
+            }
+            return ops;
+        }
+
+        function escapeHtml(s) {
+            return String(s)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // 代码语法高亮：JSON / 通用代码（注释、字符串、数字、常量、标识符）
+        // 单一 master 正则，按位置优先匹配，避免重叠
+        const SYNTAX_REGEX = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/|#[^\n]*)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)|(\b-?(?:0x[0-9a-fA-F]+|\d+\.?\d*(?:[eE][+-]?\d+)?)\b)|(\b(?:true|false|null|undefined|None|nil)\b)|([A-Za-z_$][A-Za-z0-9_$]*)|({}[\:,;])/g;
+
+        function highlightCode(text) {
+            if (!text) return '';
+            let result = '';
+            let lastIdx = 0;
+            let m;
+            SYNTAX_REGEX.lastIndex = 0;
+            while ((m = SYNTAX_REGEX.exec(text)) !== null) {
+                if (m.index > lastIdx) {
+                    result += escapeHtml(text.slice(lastIdx, m.index));
+                }
+                const [full, comment, str, num, konst, ident, punct] = m;
+                if (comment) {
+                    result += '<span class="tok-comment">' + escapeHtml(comment) + '</span>';
+                } else if (str) {
+                    // 判断是否 JSON key：后面紧跟冒号（允许中间空白）
+                    const after = text.slice(SYNTAX_REGEX.lastIndex);
+                    const isKey = /^\s*:/.test(after);
+                    const cls = isKey ? 'tok-key' : 'tok-string';
+                    result += '<span class="' + cls + '">' + escapeHtml(str) + '</span>';
+                } else if (num) {
+                    result += '<span class="tok-number">' + escapeHtml(num) + '</span>';
+                } else if (konst) {
+                    result += '<span class="tok-constant">' + escapeHtml(konst) + '</span>';
+                } else if (ident) {
+                    result += '<span class="tok-property">' + escapeHtml(ident) + '</span>';
+                } else if (punct) {
+                    result += '<span class="tok-punct">' + escapeHtml(punct) + '</span>';
+                }
+                lastIdx = SYNTAX_REGEX.lastIndex;
+            }
+            if (lastIdx < text.length) {
+                result += escapeHtml(text.slice(lastIdx));
+            }
+            return result;
+        }
+
+        // 逐字 diff 渲染。关键：永远以 (leftText, rightText) 顺序调用 diffWords，
+        // 这样 'del' 永远是「左独有」、'add' 永远是「右独有」。
+        // 左侧渲染 = same + del（左侧的实际文字，左独有段标红）；
+        // 右侧渲染 = same + add（右侧的实际文字，右独有段标绿）。
+        // 之前 bug：右侧传入 (myText, otherText) = (right, left)，导致 del/add 反转，
+        // 右侧 render-layer 实际显示的是左侧文字，textarea 和可视层完全对不上 → 输入看不见。
+        function renderInline(myText, otherText, side) {
+            const leftText = side === 'left' ? myText : otherText;
+            const rightText = side === 'left' ? otherText : myText;
+            const ops = diffWords(leftText, rightText);
+            const out = [];
+            for (const o of ops) {
+                const rendered = highlightCode(o.text);
+                if (o.type === 'same') {
+                    out.push(rendered);
+                } else if (o.type === 'del' && side === 'left') {
+                    out.push('<span class="char-del">' + rendered + '</span>');
+                } else if (o.type === 'add' && side === 'right') {
+                    out.push('<span class="char-add">' + rendered + '</span>');
+                }
+                // 另一侧的 add/del 在该侧隐藏
+            }
+            return out.join('');
+        }
+
+        // 渲染单侧文本（带 diff 行底色 + inline 字符级 diff + 语法高亮）
+        // 单模式实时对比：不渲染 placeholder 行，每行严格对应 textarea 的同一行
+        // 注意：collapsed 行只渲染视觉占位（不可交互），实际点击由 merge-layer 上层的
+        // .collapse-expand-btn 处理（merge-layer z-index 3 高于 textarea）
+        function renderSideLive(ops, side) {
+            const rows = [];
+            for (const op of ops) {
+                if (op.type === 'same') {
+                    rows.push(
+                        '<div class="render-line same">' +
+                        highlightCode(op.text || ' ') +
+                        '</div>'
+                    );
+                } else if (op.type === 'collapsed') {
+                    rows.push(
+                        '<div class="render-line collapsed">' +
+                        '⋯ ' + op.count + ' 行未变 · 点击展开' +
+                        '</div>'
+                    );
+                } else if (op.type === 'del') {
+                    if (side === 'left') {
+                        for (let k = 0; k < op.lines.length; k++) {
+                            rows.push(
+                                '<div class="render-line del">' +
+                                highlightCode(op.lines[k] || ' ') +
+                                '</div>'
+                            );
+                        }
+                    }
+                } else if (op.type === 'add') {
+                    if (side === 'right') {
+                        for (let k = 0; k < op.lines.length; k++) {
+                            rows.push(
+                                '<div class="render-line add">' +
+                                highlightCode(op.lines[k] || ' ') +
+                                '</div>'
+                            );
+                        }
+                    }
+                } else if (op.type === 'modify') {
+                    const myLines = side === 'left' ? op.delLines : op.addLines;
+                    const otherLines = side === 'left' ? op.addLines : op.delLines;
+                    for (let k = 0; k < myLines.length; k++) {
+                        const myText = myLines[k];
+                        const otherText = k < otherLines.length ? otherLines[k] : null;
+                        const content = otherText !== null
+                            ? renderInline(myText, otherText, side)
+                            : highlightCode(myText);
+                        rows.push('<div class="render-line modify">' + content + '</div>');
+                    }
+                }
+            }
+            return rows.join('');
+        }
+
+        // 渲染行号 gutter（每侧行号 = 该侧文件实际行号，1-based）
+        function renderGutter(side, lineCount) {
+            const inner = side === 'left' ? leftGutterInner : rightGutterInner;
+            let html = '';
+            for (let i = 1; i <= lineCount; i++) {
+                html += '<div class="gutter-line">' + i + '</div>';
+            }
+            inner.innerHTML = html;
+        }
+
+        // ===================== Compare Action =====================
+        // 单模式：永远在编辑 + 实时 diff。textarea 透明叠加在 render-layer 上方，
+        // 光标可见，用户随时可编辑；输入即触发 debounced 重新对比。
+        // options.silent = true 时不弹「请先输入内容」错误（用于自动触发场景）
+        function runCompare(options) {
+            options = options || {};
+            const leftText = leftInput.value;
+            const rightText = rightInput.value;
+            if (!leftText && !rightText) {
+                if (!options.silent) toast('请先输入内容', 'error');
+                clearAll();
+                return;
+            }
+
+            // 结构化对比：把两侧 JSON 按 key 排序后替换 textarea 内容（单模式必须保持一致）
+            if (structuralToggle.checked) {
+                let swapped = false;
+                const leftSorted = trySortJsonKeys(leftText);
+                const rightSorted = trySortJsonKeys(rightText);
+                if (leftSorted !== null && leftSorted !== leftText) {
+                    leftInput.value = leftSorted;
+                    swapped = true;
+                }
+                if (rightSorted !== null && rightSorted !== rightText) {
+                    rightInput.value = rightSorted;
+                    swapped = true;
+                }
+                if (swapped) {
+                    updateMeta();
+                    saveState();
+                    if (!options.silent) toast('结构化模式：已按 key 排序两侧 JSON');
+                }
+            }
+
+            const leftLines = leftInput.value.split('\n');
+            const rightLines = rightInput.value.split('\n');
+
+            // 应用忽略规则：用归一化后的行做 diff，原始行用于显示
+            // （行数不变，diff 引用的 index 仍能映射到原始行）
+            const rules = App.state.ignoreRules;
+            const leftNorm = rules.length > 0 ? leftLines.map(l => normalizeLineWithRules(l, rules)) : leftLines;
+            const rightNorm = rules.length > 0 ? rightLines.map(l => normalizeLineWithRules(l, rules)) : rightLines;
+
+            // 性能保护：超大输入给出提示
+            if (leftLines.length * rightLines.length > 4_000_000) {
+                toast('内容过大，对比可能较慢', 'error');
+            }
+
+            const { oldDiff, newDiff } = diffLinesLCS(leftNorm, rightNorm);
+            const rawOpsForFold = groupModify(oldDiff, newDiff);
+
+            // 还原原始文本：diff 在归一化文本上跑（识别「相同」），
+            // 但展示必须用原始行（含日期/UUID 等真实内容）
+            if (rules.length > 0) {
+                for (const op of rawOpsForFold) {
+                    if (op.type === 'same') {
+                        op.text = leftLines[op.oldLineNo - 1];
+                    } else if (op.type === 'del') {
+                        op.lines = leftLines.slice(op.startLine - 1, op.endLine);
+                    } else if (op.type === 'add') {
+                        op.lines = rightLines.slice(op.startLine - 1, op.endLine);
+                    } else if (op.type === 'modify') {
+                        op.delLines = leftLines.slice(op.startOld - 1, op.oldEnd);
+                        op.addLines = rightLines.slice(op.startNew - 1, op.newEnd);
+                    }
+                }
+            }
+
+            // 内容变了 → raw ops 改变 → 旧的 regionId 失效，清空单独展开集合
+            if (!App.state.rawOps || App.state.rawOps !== rawOpsForFold) {
+                if (!App.state.expandedRegions) App.state.expandedRegions = new Set();
+                // 只在 raw ops 引用真的变了的时候清空（new compare always 新对象）
+                if (App.state.rawOps !== rawOpsForFold) {
+                    App.state.expandedRegions.clear();
+                }
+            }
+
+            // 折叠连续 same 行（≥5 行才折叠，避免短文件无意义折叠）
+            const ops = collapseToggle.checked
+                ? foldSameRuns(rawOpsForFold, 5, App.state.expandedRegions)
+                : rawOpsForFold;
+
+            App.state.foldedOps = ops;
+            App.state.rawOps = rawOpsForFold;  // 未折叠版本，用于 merge 重建
+
+            // 渲染 diff 行到 render-layer（在 textarea 下方可见）
+            leftRenderInner.innerHTML = renderSideLive(ops, 'left');
+            rightRenderInner.innerHTML = renderSideLive(ops, 'right');
+
+            // 渲染行号（按各自 textarea 的实际行数，不补占位）
+            renderGutter('left', leftInput.value.split('\n').length);
+            renderGutter('right', rightInput.value.split('\n').length);
+
+            // 渲染 merge 按钮
+            renderMergeButtons(App.state.rawOps);
+
+            leftEmpty.classList.add('hidden');
+            rightEmpty.classList.add('hidden');
+
+            // 渲染两侧 minimap（始终可见，不切换 class）
+            renderMinimap('left', ops);
+            renderMinimap('right', ops);
+
+            // 初始对齐
+            applyRenderTransform('left', leftInput.scrollTop, leftInput.scrollLeft);
+            applyRenderTransform('right', rightInput.scrollTop, rightInput.scrollLeft);
+            updateMinimapViewport('left');
+            updateMinimapViewport('right');
+            updateActiveLine('left');
+            updateActiveLine('right');
+
+            // 计算 diff 块位置（基于折叠后的 ops，因为视觉行号 = 折叠后行号）
+            App.state.diffBlocks = computeDiffBlocks(App.state.foldedOps);
+            App.state.currentDiffIdx = App.state.diffBlocks.length > 0 ? 0 : -1;
+            updateNavCounter();
+
+            // 渲染 stats 比例条（用 raw ops 统计，反映真实差异量）
+            renderStats(App.state.rawOps);
+        }
+
+        // 折叠连续 same 块（≥threshold 行）：把 N 行 same 替换为单个 collapsed 标记 op
+        // 折叠连续 same 行。expandedSet 存放「被用户单独展开」的 region id（=raw ops 起始索引），
+        // 命中则该段不折叠，让用户能逐段独立展开/收起。
+        function foldSameRuns(ops, threshold, expandedSet) {
+            expandedSet = expandedSet || new Set();
+            const out = [];
+            let i = 0;
+            while (i < ops.length) {
+                const op = ops[i];
+                if (op.type === 'same') {
+                    let run = 1;
+                    const first = op;
+                    const lines = [op.text];
+                    while (i + run < ops.length && ops[i + run].type === 'same') {
+                        lines.push(ops[i + run].text);
+                        run++;
+                    }
+                    if (run >= threshold && !expandedSet.has(i)) {
+                        // 保留首尾各 1 行，中间折叠为单个 indicator
+                        out.push({ type: 'same', text: lines[0] });
+                        out.push({ type: 'collapsed', count: run - 2, regionId: i });
+                        out.push({ type: 'same', text: lines[lines.length - 1] });
+                    } else {
+                        for (let k = 0; k < run; k++) out.push({ type: 'same', text: lines[k] });
+                    }
+                    i += run;
+                } else {
+                    out.push(op);
+                    i++;
+                }
+            }
+            return out;
+        }
+
+        // 结构化对比：解析 JSON → 按 key 排序 → 重新 pretty print
+        function trySortJsonKeys(text) {
+            try {
+                const obj = JSON.parse(text);
+                const sorted = sortObjectKeys(obj);
+                return JSON.stringify(sorted, null, 2);
+            } catch (e) {
+                return null;
+            }
+        }
+        function sortObjectKeys(obj) {
+            if (Array.isArray(obj)) {
+                return obj.map(sortObjectKeys);
+            } else if (obj !== null && typeof obj === 'object') {
+                const keys = Object.keys(obj).sort();
+                const out = {};
+                for (const k of keys) out[k] = sortObjectKeys(obj[k]);
+                return out;
+            }
+            return obj;
+        }
+
+        // 刷新按钮：立即触发，取消 debounce
+        refreshBtn.addEventListener('click', () => {
+            cancelAutoCompare();
+            runCompare();
+        });
+
+        // ===================== Clear All =====================
+        // 单模式下不存在「退出 diff」概念，清空只是把所有可视层重置回初始
+        function clearAll() {
+            cancelAutoCompare();
+            leftRenderInner.innerHTML = '';
+            rightRenderInner.innerHTML = '';
+            leftGutterInner.innerHTML = '';
+            rightGutterInner.innerHTML = '';
+            leftMergeInner.innerHTML = '';
+            rightMergeInner.innerHTML = '';
+            leftMinimapContent.innerHTML = '';
+            rightMinimapContent.innerHTML = '';
+            App.cache.minimapSignature.left = '';
+            App.cache.minimapSignature.right = '';
+            App.state.foldedOps = null;
+            App.state.rawOps = null;
+            App.state.diffBlocks = [];
+            App.state.currentDiffIdx = -1;
+            leftEmpty.classList.remove('hidden');
+            rightEmpty.classList.remove('hidden');
+            applyRenderTransform('left', 0, 0);
+            applyRenderTransform('right', 0, 0);
+            updateMinimapViewport('left');
+            updateMinimapViewport('right');
+            updateNavCounter();
+            statsContent.innerHTML = '<span class="stats-empty">输入即自动对比 · <kbd>⌘/Ctrl</kbd> + <kbd>Enter</kbd> 立即刷新</span>';
+            updateMeta();
+        }
+
+        // ===================== Keyboard Shortcuts =====================
+        document.addEventListener('keydown', (e) => {
+            const ctrl = e.ctrlKey || e.metaKey;
+            // Ctrl/Cmd+Enter = 立即刷新对比
+            if (ctrl && e.key === 'Enter') {
+                e.preventDefault();
+                cancelAutoCompare();
+                runCompare();
+                return;
+            }
+            // Ctrl/Cmd+Shift+F = 格式化
+            if (ctrl && e.shiftKey && (e.key === 'F' || e.key === 'f')) {
+                e.preventDefault();
+                formatBtn.click();
+                return;
+            }
+            // Ctrl/Cmd+F = 搜索（焦点所在侧）
+            if (ctrl && (e.key === 'F' || e.key === 'f')) {
+                const active = document.activeElement;
+                let side = 'left';
+                if (active === rightInput) side = 'right';
+                else if (active === leftInput) side = 'left';
+                else {
+                    // 看看哪个 search overlay 已打开
+                    if (rightSearch.classList.contains('active')) side = 'right';
+                }
+                e.preventDefault();
+                openSearch(side);
+                return;
+            }
+            // Alt+↑/↓ = 上/下一处差异
+            if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+                e.preventDefault();
+                if (e.key === 'ArrowUp') prevDiffBtn.click();
+                else nextDiffBtn.click();
+                return;
+            }
+            // Esc = 关搜索 / 关 modal
+            if (e.key === 'Escape') {
+                if (leftSearch.classList.contains('active')) closeSearch('left');
+                if (rightSearch.classList.contains('active')) closeSearch('right');
+                if (resetModal.classList.contains('active')) closeResetModal();
+                legendPop.classList.remove('active');
+                exportMenu.classList.remove('active');
+                return;
+            }
+        });
+
+        // 对比选项变化时实时重跑
+        [ignoreWs, ignoreCase, structuralToggle, collapseToggle].forEach(el => {
+            el.addEventListener('change', () => {
+                saveState();
+                if (leftInput.value || rightInput.value) {
+                    scheduleAutoCompare();
+                }
+            });
+        });
+
+        // ===================== Theme =====================
+        const SUN_ICON = '<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>';
+        const MOON_ICON = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+
+        function setTheme(theme) {
+            document.body.setAttribute('data-theme', theme);
+            themeIcon.innerHTML = theme === 'light' ? SUN_ICON : MOON_ICON;
+            themeBtn.classList.toggle('active', theme === 'light');
+            saveState();
+        }
+
+        themeBtn.addEventListener('click', () => {
+            const cur = document.body.getAttribute('data-theme');
+            setTheme(cur === 'light' ? 'dark' : 'light');
+        });
+
+        // ===================== Font size =====================
+        function setFontSize(px) {
+            px = Math.max(10, Math.min(22, px));
+            document.documentElement.style.setProperty('--font-mono-size', px + 'px');
+            // 行高 1.65 固定，行高 = px * 1.65。render-line 的 min-height 用 px 计算
+            const lineH = Math.round(px * 1.65 * 100) / 100;
+            document.documentElement.style.setProperty('--line-height', lineH + 'px');
+            // 重新渲染以便 collapse 高度等更新
+            if (App.state.foldedOps) {
+                renderMinimap('left', App.state.foldedOps);
+                renderMinimap('right', App.state.foldedOps);
+            }
+            saveState();
+        }
+
+        fontIncBtn.addEventListener('click', () => {
+            const cur = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--font-mono-size')) || 13;
+            setFontSize(cur + 1);
+        });
+        fontDecBtn.addEventListener('click', () => {
+            const cur = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--font-mono-size')) || 13;
+            setFontSize(cur - 1);
+        });
+
+        // ===================== Wrap mode =====================
+        wrapToggle.addEventListener('change', () => {
+            document.body.classList.toggle('wrap-mode', wrapToggle.checked);
+            saveState();
+        });
+
+        // ===================== Swap sides =====================
+        swapBtn.addEventListener('click', () => {
+            const tmp = leftInput.value;
+            leftInput.value = rightInput.value;
+            rightInput.value = tmp;
+            updateMeta();
+            saveState();
+            if (leftInput.value || rightInput.value) {
+                runCompare({ silent: true });
+            }
+            toast('已交换两侧内容', 'success');
+        });
+
+        // ===================== Reset confirm modal =====================
+        function openResetModal() {
+            if (!leftInput.value && !rightInput.value) {
+                toast('已经是空的了');
+                return;
+            }
+            resetModal.classList.add('active');
+        }
+        function closeResetModal() {
+            resetModal.classList.remove('active');
+        }
+        resetBtn.addEventListener('click', openResetModal);
+        resetCancelBtn.addEventListener('click', closeResetModal);
+        resetModal.addEventListener('click', (e) => {
+            if (e.target === resetModal) closeResetModal();
+        });
+        resetConfirmBtn.addEventListener('click', () => {
+            leftInput.value = '';
+            rightInput.value = '';
+            clearAll();
+            saveState();
+            closeResetModal();
+            toast('已重置', 'success');
+        });
+
+        // ===================== Legend popover =====================
+        legendBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            legendPop.classList.toggle('active');
+            exportMenu.classList.remove('active');
+        });
+
+        // ===================== Help modal =====================
+        function openHelp() {
+            legendPop.classList.remove('active');
+            exportMenu.classList.remove('active');
+            helpModal.classList.add('active');
+        }
+        function closeHelp() {
+            helpModal.classList.remove('active');
+        }
+        helpBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openHelp();
+        });
+        helpCloseBtn.addEventListener('click', closeHelp);
+        helpModal.addEventListener('click', (e) => {
+            if (e.target === helpModal) closeHelp();
+        });
+
+        // ===================== Export menu =====================
+        exportBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            exportMenu.classList.toggle('active');
+            legendPop.classList.remove('active');
+        });
+
+        document.addEventListener('click', () => {
+            legendPop.classList.remove('active');
+            exportMenu.classList.remove('active');
+        });
+        legendPop.addEventListener('click', e => e.stopPropagation());
+        exportMenu.addEventListener('click', e => e.stopPropagation());
+
+        exportMenu.querySelectorAll('[data-export]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const type = btn.dataset.export;
+                exportMenu.classList.remove('active');
+                if (!App.state.foldedOps) {
+                    toast('请先输入并对比内容', 'error');
+                    return;
+                }
+                doExport(type);
+            });
+        });
+
+        function downloadFile(filename, content, mime) {
+            const blob = new Blob([content], { type: mime });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        function doExport(type) {
+            const ops = App.state.foldedOps || [];
+            if (type === 'unified') {
+                let out = '';
+                out += '--- original\n+++ modified\n';
+                for (const op of ops) {
+                    if (op.type === 'same') {
+                        out += ' ' + op.text + '\n';
+                    } else if (op.type === 'add') {
+                        for (const l of op.lines) out += '+' + l + '\n';
+                    } else if (op.type === 'del') {
+                        for (const l of op.lines) out += '-' + l + '\n';
+                    } else if (op.type === 'modify') {
+                        for (const l of op.delLines) out += '-' + l + '\n';
+                        for (const l of op.addLines) out += '+' + l + '\n';
+                    }
+                }
+                downloadFile('diff.patch', out, 'text/plain');
+                toast('已导出 Unified Diff', 'success');
+            } else if (type === 'markdown') {
+                let out = '| # | 原始文本 | 对比文本 |\n|---|---|---|\n';
+                let n = 0;
+                for (const op of ops) {
+                    if (op.type === 'same') {
+                        n++;
+                        out += '|' + n + '|`' + escapeHtml(op.text) + '`|`' + escapeHtml(op.text) + '`|\n';
+                    } else if (op.type === 'add') {
+                        for (const l of op.lines) { n++; out += '|' + n + '| |**+ `' + escapeHtml(l) + '`**|\n'; }
+                    } else if (op.type === 'del') {
+                        for (const l of op.lines) { n++; out += '|' + n + '|**- `' + escapeHtml(l) + '`**| |\n'; }
+                    } else if (op.type === 'modify') {
+                        const max = Math.max(op.delLines.length, op.addLines.length);
+                        for (let k = 0; k < max; k++) {
+                            n++;
+                            const dl = k < op.delLines.length ? '**~ `' + escapeHtml(op.delLines[k]) + '`**' : '';
+                            const al = k < op.addLines.length ? '**~ `' + escapeHtml(op.addLines[k]) + '`**' : '';
+                            out += '|' + n + '|' + dl + '|' + al + '|\n';
+                        }
+                    }
+                }
+                downloadFile('diff.md', out, 'text/markdown');
+                toast('已导出 Markdown 表格', 'success');
+            } else if (type === 'html') {
+                const leftHtml = leftRenderInner.innerHTML;
+                const rightHtml = rightRenderInner.innerHTML;
+                const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Diff Report</title><style>body{font-family:system-ui,sans-serif;background:#0B1120;color:#F1F5F9;padding:24px}h1{font-size:18px;margin-bottom:16px}.row{display:flex;gap:12px}.col{flex:1;background:#0F172A;border:1px solid #334155;border-radius:8px;padding:12px;font-family:JetBrains Mono,monospace;font-size:12px;white-space:pre;overflow:auto}pre{margin:0;line-height:1.6}.del{background:rgba(239,68,68,.18)}.add{background:rgba(34,197,94,.18)}.modify{background:rgba(234,179,8,.14)}</style></head><body><h1>Diff Report · ' + new Date().toLocaleString() + '</h1><div class="row"><div class="col"><h3>原始</h3><pre>' + leftHtml + '</pre></div><div class="col"><h3>对比</h3><pre>' + rightHtml + '</pre></div></div></body></html>';
+                downloadFile('diff-report.html', html, 'text/html');
+                toast('已导出 HTML 报告', 'success');
+            }
+        }
+
+        // ===================== File open =====================
+        let fileInputTarget = 'left';
+        fileInput.addEventListener('change', (e) => {
+            const f = e.target.files[0];
+            if (!f) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                const ta = fileInputTarget === 'left' ? leftInput : rightInput;
+                ta.value = reader.result;
+                handleTextInput();
+                saveState();
+                toast('已载入 ' + f.name, 'success');
+            };
+            reader.readAsText(f);
+            e.target.value = '';
+        });
+
+        // ===================== Diff navigation =====================
+        // 收集所有 diff 行的位置（top offset），用于上一/下一跳转
+        // 基于折叠后的 ops 计算（因为视觉行号 = 折叠后行号）
+
+        function computeDiffBlocks(ops) {
+            const blocks = [];
+            const lineHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--font-mono-size')) * 1.65 || 21.45;
+            const padTop = 14;
+            let leftRow = 0, rightRow = 0;
+            for (const op of ops) {
+                if (op.type === 'same') {
+                    leftRow++; rightRow++;
+                } else if (op.type === 'collapsed') {
+                    // 折叠占位只占 1 可视行
+                    leftRow++; rightRow++;
+                } else if (op.type === 'del') {
+                    blocks.push({
+                        leftTop: padTop + leftRow * lineHeight,
+                        rightTop: padTop + rightRow * lineHeight,
+                        type: 'del'
+                    });
+                    leftRow += op.lines.length;
+                } else if (op.type === 'add') {
+                    blocks.push({
+                        leftTop: padTop + leftRow * lineHeight,
+                        rightTop: padTop + rightRow * lineHeight,
+                        type: 'add'
+                    });
+                    rightRow += op.lines.length;
+                } else if (op.type === 'modify') {
+                    blocks.push({
+                        leftTop: padTop + leftRow * lineHeight,
+                        rightTop: padTop + rightRow * lineHeight,
+                        type: 'modify'
+                    });
+                    leftRow += op.delLines.length;
+                    rightRow += op.addLines.length;
+                }
+            }
+            return blocks;
+        }
+
+        function updateNavCounter() {
+            const total = App.state.diffBlocks.length;
+            const cur = total > 0 ? (App.state.currentDiffIdx + 1) : 0;
+            navCounter.textContent = cur + ' / ' + total;
+            navCounter.classList.toggle('has-diff', total > 0);
+            prevDiffBtn.disabled = total === 0;
+            nextDiffBtn.disabled = total === 0;
+        }
+
+        function jumpToDiff(idx) {
+            if (App.state.diffBlocks.length === 0) return;
+            App.state.currentDiffIdx = (idx + App.state.diffBlocks.length) % App.state.diffBlocks.length;
+            const block = App.state.diffBlocks[App.state.currentDiffIdx];
+            const targetTop = Math.max(0, block.leftTop - 80);
+            leftInput.scrollTop = targetTop;
+            // 联动会处理右侧
+            updateNavCounter();
+            highlightCurrentDiff();
+        }
+
+        function highlightCurrentDiff() {
+            // 清除旧高亮
+            document.querySelectorAll('.render-line.current-diff').forEach(el => el.classList.remove('current-diff'));
+            if (App.state.currentDiffIdx < 0 || !App.state.diffBlocks[App.state.currentDiffIdx]) return;
+            // 找到左侧对应行：当前 block 起始 row 算起的第一行
+            const lineHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--font-mono-size')) * 1.65 || 21.45;
+            const block = App.state.diffBlocks[App.state.currentDiffIdx];
+            const leftLines = leftRenderInner.querySelectorAll('.render-line');
+            // 计算这一 block 在 leftLines 里的索引：根据 top 偏移
+            const targetTop = block.leftTop;
+            for (const line of leftLines) {
+                const lineTop = line.offsetTop;
+                if (Math.abs(lineTop - targetTop) < lineHeight / 2) {
+                    line.classList.add('current-diff');
+                    break;
+                }
+            }
+        }
+
+        prevDiffBtn.addEventListener('click', () => jumpToDiff(App.state.currentDiffIdx - 1));
+        nextDiffBtn.addEventListener('click', () => jumpToDiff(App.state.currentDiffIdx + 1));
+
+        // ===================== Stats proportion bar + clickable =====================
+        function renderStats(ops) {
+            const stats = { add: 0, del: 0, mod: 0, same: 0 };
+            for (const op of ops) {
+                if (op.type === 'same') stats.same++;
+                else if (op.type === 'add') stats.add += op.lines.length;
+                else if (op.type === 'del') stats.del += op.lines.length;
+                else if (op.type === 'modify') stats.mod += Math.max(op.delLines.length, op.addLines.length);
+            }
+            const total = stats.add + stats.del + stats.mod + stats.same;
+            const similarity = total > 0 ? Math.round((stats.same / total) * 100) : 100;
+
+            const pct = v => total > 0 ? (v / total * 100).toFixed(1) + '%' : '0%';
+
+            const propBar =
+                '<div class="proportion-bar" title="差异占比可视化">' +
+                '<div class="prop-track">' +
+                '<div class="prop-seg add" style="width:' + pct(stats.add) + '" data-jump="add"></div>' +
+                '<div class="prop-seg del" style="width:' + pct(stats.del) + '" data-jump="del"></div>' +
+                '<div class="prop-seg mod" style="width:' + pct(stats.mod) + '" data-jump="modify"></div>' +
+                '<div class="prop-seg same" style="width:' + pct(stats.same) + '"></div>' +
+                '</div>' +
+                '<span style="font-size:11px;color:var(--text-muted);font-family:JetBrains Mono,monospace;min-width:40px">' + similarity + '%</span>' +
+                '</div>';
+
+            const statRow =
+                '<span class="stat add clickable" data-jump="add"><span class="badge">+' + stats.add + '</span>新增</span>' +
+                '<span class="stat del clickable" data-jump="del"><span class="badge">-' + stats.del + '</span>删除</span>' +
+                '<span class="stat mod clickable" data-jump="modify"><span class="badge">~' + stats.mod + '</span>修改</span>' +
+                '<span class="stat same"><span class="badge">' + stats.same + '</span>相同</span>' +
+                '<button class="stat-copy-btn" id="statsCopyBtn" title="复制统计到剪贴板">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
+                '复制</button>';
+
+            statsContent.innerHTML = '<div style="display:inline-flex;align-items:center;gap:14px">' + propBar + statRow + '</div>';
+
+            // 统计复制：把行数 + 占比格式化为单行文本
+            const copyBtn = document.getElementById('statsCopyBtn');
+            if (copyBtn) {
+                copyBtn.addEventListener('click', () => {
+                    const line =
+                        '新增 +' + stats.add + ' (' + pct(stats.add) + ')  ' +
+                        '删除 -' + stats.del + ' (' + pct(stats.del) + ')  ' +
+                        '修改 ~' + stats.mod + ' (' + pct(stats.mod) + ')  ' +
+                        '相同 ' + stats.same + ' (' + pct(stats.same) + ')  ' +
+                        '相似度 ' + similarity + '%';
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(line).then(
+                            () => toast('统计已复制', 'success'),
+                            () => fallbackCopy(line)
+                        );
+                    } else {
+                        fallbackCopy(line);
+                    }
+                });
+            }
+
+            // 点击 stat 跳到首个对应类型 diff
+            statsContent.querySelectorAll('[data-jump]').forEach(el => {
+                el.addEventListener('click', () => {
+                    const type = el.dataset.jump;
+                    const idx = App.state.diffBlocks.findIndex(b => b.type === type || (type === 'modify' && b.type === 'modify'));
+                    if (idx >= 0) jumpToDiff(idx);
+                });
+            });
+        }
+
+        // 剪贴板 fallback：选中文本 + execCommand
+        function fallbackCopy(text) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                toast('统计已复制', 'success');
+            } catch (e) {
+                toast('复制失败', 'error');
+            }
+            document.body.removeChild(ta);
+        }
+
+        // ===================== Merge actions + collapse expand =====================
+        // 每个差异块第一个行号位置放一个 → 或 ← 按钮；collapsed 行放展开按钮
+        function renderMergeButtons(rawOps) {
+            const lineHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--font-mono-size')) * 1.65 || 21.45;
+            const padTop = 14;
+            let leftRow = 0, rightRow = 0;
+            let rawIdx = 0;  // 在 rawOps 中的索引，用于 click handler 反查
+            const leftBtns = [];
+            const rightBtns = [];
+
+            // 用折叠后的 ops 来定位（因为按钮要叠在可见行上）
+            const foldedOps = App.state.foldedOps || rawOps;
+            for (const op of foldedOps) {
+                if (op.type === 'same') {
+                    // 单独展开过的段：在首行放一个「收起」按钮（右侧小 pill，不遮文字）
+                    if (App.state.expandedRegions && App.state.expandedRegions.has(rawIdx)) {
+                        const topL = padTop + leftRow * lineHeight;
+                        const topR = padTop + rightRow * lineHeight;
+                        const pill = (top) => '<button class="collapse-expand-btn collapse-mode" style="top:' + top + 'px;height:' + lineHeight + 'px" data-action="collapse" data-region-id="' + rawIdx + '" title="收起此段">⌄ 收起</button>';
+                        leftBtns.push(pill(topL));
+                        rightBtns.push(pill(topR));
+                    }
+                    leftRow++; rightRow++; rawIdx++;
+                } else if (op.type === 'collapsed') {
+                    const topL = padTop + leftRow * lineHeight;
+                    const topR = padTop + rightRow * lineHeight;
+                    const rid = op.regionId;
+                    leftBtns.push('<button class="collapse-expand-btn" style="top:' + topL + 'px;height:' + lineHeight + 'px" data-action="expand" data-region-id="' + rid + '" data-count="' + op.count + '">⋯ ' + op.count + ' 行 · 点击展开</button>');
+                    rightBtns.push('<button class="collapse-expand-btn" style="top:' + topR + 'px;height:' + lineHeight + 'px" data-action="expand" data-region-id="' + rid + '" data-count="' + op.count + '">⋯ ' + op.count + ' 行 · 点击展开</button>');
+                    rawIdx += op.count + 2;  // 折叠段在 rawOps 里是 count+2 行 same
+                } else if (op.type === 'del') {
+                    const top = padTop + leftRow * lineHeight;
+                    leftBtns.push(makeMergeBtn('to-right', top, 'left', 'del', rawIdx));
+                    leftRow += op.lines.length;
+                    rawIdx++;
+                } else if (op.type === 'add') {
+                    const top = padTop + rightRow * lineHeight;
+                    rightBtns.push(makeMergeBtn('to-left', top, 'right', 'add', rawIdx));
+                    rightRow += op.lines.length;
+                    rawIdx++;
+                } else if (op.type === 'modify') {
+                    const topL = padTop + leftRow * lineHeight;
+                    const topR = padTop + rightRow * lineHeight;
+                    leftBtns.push(makeMergeBtn('to-right', topL, 'left', 'modify', rawIdx));
+                    rightBtns.push(makeMergeBtn('to-left', topR, 'right', 'modify', rawIdx));
+                    leftRow += op.delLines.length;
+                    rightRow += op.addLines.length;
+                    rawIdx++;
+                }
+            }
+            leftMergeInner.innerHTML = leftBtns.join('');
+            rightMergeInner.innerHTML = rightBtns.join('');
+        }
+
+        function makeMergeBtn(dir, top, side, type, rawIdx) {
+            return '<button class="merge-btn ' + dir + '" style="top:' + (top - 1) + 'px" data-side="' + side + '" data-dir="' + dir + '" data-type="' + type + '" data-raw-idx="' + rawIdx + '" title="' + (dir === 'to-right' ? '复制到右侧' : '复制到左侧') + '">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
+                (dir === 'to-right' ? '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>' : '<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>') +
+                '</svg></button>';
+        }
+
+        // 点击 merge 按钮：把指定 diff block 复制到另一侧对应位置
+        // 点击 collapse-expand 按钮：临时展开（关闭折叠并重渲染）
+        document.addEventListener('click', (e) => {
+            const colBtn = e.target.closest('.collapse-expand-btn');
+            if (colBtn) {
+                const rid = parseInt(colBtn.dataset.regionId, 10);
+                if (!Number.isNaN(rid) && App.state.rawOps) {
+                    if (App.state.expandedRegions.has(rid)) {
+                        App.state.expandedRegions.delete(rid);
+                    } else {
+                        App.state.expandedRegions.add(rid);
+                    }
+                    // 重新折叠 + 重渲染
+                    App.state.foldedOps = collapseToggle.checked
+                        ? foldSameRuns(App.state.rawOps, 5, App.state.expandedRegions)
+                        : App.state.rawOps;
+                    leftRenderInner.innerHTML = renderSideLive(App.state.foldedOps, 'left');
+                    rightRenderInner.innerHTML = renderSideLive(App.state.foldedOps, 'right');
+                    renderMinimap('left', App.state.foldedOps);
+                    renderMinimap('right', App.state.foldedOps);
+                    renderMergeButtons(App.state.rawOps);
+                    applyRenderTransform('left', leftInput.scrollTop, leftInput.scrollLeft);
+                    applyRenderTransform('right', rightInput.scrollTop, rightInput.scrollLeft);
+                    App.state.diffBlocks = computeDiffBlocks(App.state.foldedOps);
+                    App.state.currentDiffIdx = App.state.diffBlocks.length > 0 ? 0 : -1;
+                    updateNavCounter();
+                }
+                return;
+            }
+
+            const btn = e.target.closest('.merge-btn');
+            if (!btn) return;
+
+            const side = btn.dataset.side;
+            const dir = btn.dataset.dir;
+            const type = btn.dataset.type;
+            const rawIdx = parseInt(btn.dataset.rawIdx, 10);
+            const rawOps = App.state.rawOps || [];
+            const op = rawOps[rawIdx];
+            if (!op) return;
+
+            // 走 rawOps 到 rawIdx 之前，累计两侧行号
+            let leftIdx = 0, rightIdx = 0;
+            for (let i = 0; i < rawIdx; i++) {
+                const o = rawOps[i];
+                if (o.type === 'same') { leftIdx++; rightIdx++; }
+                else if (o.type === 'del') { leftIdx += o.lines.length; }
+                else if (o.type === 'add') { rightIdx += o.lines.length; }
+                else if (o.type === 'modify') { leftIdx += o.delLines.length; rightIdx += o.addLines.length; }
+            }
+
+            let leftArr = leftInput.value.split('\n');
+            let rightArr = rightInput.value.split('\n');
+
+            if (type === 'del') {
+                // 把 left 的 delLines 插入到 right 的 rightIdx 位置（right 此处本来没有这些行）
+                rightArr = replaceBlock(rightArr, rightIdx, rightIdx, op.lines);
+            } else if (type === 'add') {
+                // 把 right 的 addLines 插入到 left 的 leftIdx 位置
+                leftArr = replaceBlock(leftArr, leftIdx, leftIdx, op.lines);
+            } else if (type === 'modify') {
+                if (dir === 'to-right') {
+                    // 用 left 的 delLines 替换 right 的 addLines 区段
+                    rightArr = replaceBlock(rightArr, rightIdx, rightIdx + op.addLines.length, op.delLines);
+                } else {
+                    // 用 right 的 addLines 替换 left 的 delLines 区段
+                    leftArr = replaceBlock(leftArr, leftIdx, leftIdx + op.delLines.length, op.addLines);
+                }
+            }
+
+            // 快照合并前状态，5s 内可在 toast 撤销
+            const snapshot = { left: leftInput.value, right: rightInput.value, leftScroll: leftInput.scrollTop, rightScroll: rightInput.scrollTop };
+
+            leftInput.value = leftArr.join('\n');
+            rightInput.value = rightArr.join('\n');
+            updateMeta();
+            saveState();
+
+            // merge 视觉反馈：在被操作侧的对应行短暂闪光
+            const targetInner = (type === 'add' || (type === 'modify' && dir === 'to-left'))
+                ? leftRenderInner : rightRenderInner;
+            const targetRow = (type === 'add' || (type === 'modify' && dir === 'to-left'))
+                ? leftIdx : rightIdx;
+            const flashLine = targetInner.children[targetRow];
+            if (flashLine) {
+                flashLine.classList.remove('merge-flash');
+                // 强制 reflow，让动画重新触发
+                void flashLine.offsetWidth;
+                flashLine.classList.add('merge-flash');
+                setTimeout(() => flashLine.classList.remove('merge-flash'), 700);
+            }
+
+            runCompare({ silent: true });
+            toastAction('已合并', '撤销', () => {
+                leftInput.value = snapshot.left;
+                rightInput.value = snapshot.right;
+                leftInput.scrollTop = snapshot.leftScroll;
+                rightInput.scrollTop = snapshot.rightScroll;
+                updateMeta();
+                saveState();
+                runCompare({ silent: true });
+                toast('已撤销合并');
+            });
+        });
+
+        function replaceBlock(arr, start, end, payload) {
+            const before = arr.slice(0, start);
+            const after = arr.slice(end);
+            return before.concat(payload).concat(after);
+        }
+
+        function rebuildFromOps(ops) {
+            const left = [], right = [];
+            for (const op of ops) {
+                if (op.type === 'same') {
+                    left.push(op.text); right.push(op.text);
+                } else if (op.type === 'del') {
+                    for (const l of op.lines) left.push(l);
+                } else if (op.type === 'add') {
+                    for (const l of op.lines) right.push(l);
+                } else if (op.type === 'modify') {
+                    for (const l of op.delLines) left.push(l);
+                    for (const l of op.addLines) right.push(l);
+                }
+            }
+            return { left, right };
+        }
+
+        // ===================== Search =====================
+        const searchState = { left: { matches: [], idx: -1 }, right: { matches: [], idx: -1 } };
+
+        function openSearch(side) {
+            const overlay = side === 'left' ? leftSearch : rightSearch;
+            const input = side === 'left' ? leftSearchInput : rightSearchInput;
+            overlay.classList.add('active');
+            input.focus();
+            input.select();
+        }
+        function closeSearch(side) {
+            const overlay = side === 'left' ? leftSearch : rightSearch;
+            overlay.classList.remove('active');
+            clearSearchHighlights(side);
+        }
+        function clearSearchHighlights(side) {
+            // 简单做法：重新渲染（已存在的 highlightCode 不带 mark，重跑 runCompare 即可）
+            // 但这里只清 mark 标签 — 简化：重新 runCompare
+            if (App.state.foldedOps) runCompare({ silent: true });
+        }
+        function runSearch(side) {
+            const input = side === 'left' ? leftSearchInput : rightSearchInput;
+            const ta = side === 'left' ? leftInput : rightInput;
+            const countEl = side === 'left' ? leftSearchCount : rightSearchCount;
+            const q = input.value;
+            if (!q) {
+                searchState[side] = { matches: [], idx: -1 };
+                countEl.textContent = '0/0';
+                clearSearchHighlights(side);
+                return;
+            }
+            const text = ta.value;
+            const matches = [];
+            let i = 0;
+            while ((i = text.indexOf(q, i)) !== -1) {
+                matches.push(i);
+                i += q.length;
+            }
+            searchState[side] = { matches, idx: matches.length > 0 ? 0 : -1 };
+            countEl.textContent = (matches.length > 0 ? 1 : 0) + '/' + matches.length;
+            if (matches.length > 0) scrollToMatch(side, 0);
+            highlightMatchesInRender(side, q);
+        }
+        function scrollToMatch(side, idx) {
+            const ta = side === 'left' ? leftInput : rightInput;
+            const st = searchState[side];
+            if (idx < 0 || idx >= st.matches.length) return;
+            st.idx = idx;
+            const pos = st.matches[idx];
+            const text = ta.value.substring(0, pos);
+            const line = text.split('\n').length - 1;
+            const lineHeight = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--font-mono-size')) * 1.65 || 21.45;
+            ta.scrollTop = Math.max(0, line * lineHeight - 60);
+            const countEl = side === 'left' ? leftSearchCount : rightSearchCount;
+            countEl.textContent = (idx + 1) + '/' + st.matches.length;
+            highlightMatchesInRender(side, document.getElementById(side === 'left' ? 'leftSearchInput' : 'rightSearchInput').value, idx);
+        }
+        function highlightMatchesInRender(side, q, activeIdx) {
+            // 在 render-layer 上覆盖高亮 — 简化：把 query 直接 wrap 到 mark，但因为 render 是 escaped 的，
+            // 完整做法需重新跑 diff。此处跳过精细实现，仅在 textarea 滚动到对应行
+            // TODO: 真正在 renderInner 里高亮字符（需重构 renderSideLive 支持 query）
+        }
+
+        // 替换当前命中：用 textarea.setSelectionRange 选中后 replace，保留 caret 在替换文本末尾
+        function replaceCurrent(side) {
+            const ta = side === 'left' ? leftInput : rightInput;
+            const replaceInput = side === 'left' ? leftReplaceInput : rightReplaceInput;
+            const searchInput = side === 'left' ? leftSearchInput : rightSearchInput;
+            const q = searchInput.value;
+            const r = replaceInput.value;
+            const st = searchState[side];
+            if (!q || !st || st.idx < 0 || st.matches.length === 0) {
+                toast('没有可替换的匹配', 'error');
+                return;
+            }
+            const start = st.matches[st.idx];
+            const end = start + q.length;
+            ta.focus();
+            ta.setSelectionRange(start, end);
+            // execCommand 替换选区内容（保留 undo 历史）
+            const succeeded = document.execCommand && document.execCommand('insertText', false, r);
+            if (!succeeded) {
+                // Fallback：直接 setRangeText，但丢失 undo
+                ta.setRangeText(r, start, end, 'end');
+            }
+            // 触发 input 事件 → saveState + scheduleAutoCompare
+            ta.dispatchEvent(new Event('input', { bubbles: true }));
+            toast('已替换 1 处', 'success');
+        }
+        // 全部替换：循环替换直到无匹配（注意 q.length 为 0 时跳出避免死循环）
+        function replaceAll(side) {
+            const ta = side === 'left' ? leftInput : rightInput;
+            const replaceInput = side === 'left' ? leftReplaceInput : rightReplaceInput;
+            const searchInput = side === 'left' ? leftSearchInput : rightSearchInput;
+            const q = searchInput.value;
+            const r = replaceInput.value;
+            if (!q) {
+                toast('查找内容为空', 'error');
+                return;
+            }
+            const text = ta.value;
+            const parts = text.split(q);
+            const count = parts.length - 1;
+            if (count === 0) {
+                toast('未找到匹配', 'error');
+                return;
+            }
+            ta.value = parts.join(r);
+            ta.dispatchEvent(new Event('input', { bubbles: true }));
+            // 重新搜索刷新计数
+            runSearch(side);
+            toast('已替换 ' + count + ' 处', 'success');
+        }
+
+        leftSearchInput.addEventListener('input', () => runSearch('left'));
+        rightSearchInput.addEventListener('input', () => runSearch('right'));
+        leftSearchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); scrollToMatch('left', e.shiftKey ? searchState.left.idx - 1 : searchState.left.idx + 1); }
+            if (e.key === 'Escape') closeSearch('left');
+        });
+        rightSearchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); scrollToMatch('right', e.shiftKey ? searchState.right.idx - 1 : searchState.right.idx + 1); }
+            if (e.key === 'Escape') closeSearch('right');
+        });
+        document.querySelectorAll('[data-search-action]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const side = btn.dataset.target;
+                const action = btn.dataset.searchAction;
+                if (action === 'close') closeSearch(side);
+                else if (action === 'prev') scrollToMatch(side, searchState[side].idx - 1);
+                else if (action === 'next') scrollToMatch(side, searchState[side].idx + 1);
+                else if (action === 'replace') replaceCurrent(side);
+                else if (action === 'replace-all') replaceAll(side);
+            });
+        });
+
+        // ===================== Empty state CTAs =====================
+        document.querySelectorAll('[data-empty-action]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const action = btn.dataset.emptyAction;
+                if (action === 'sample') {
+                    sampleBtn.click();
+                } else if (action === 'paste-left' || action === 'paste-right') {
+                    const target = action.endsWith('left') ? 'left' : 'right';
+                    document.querySelector('[data-action="paste"][data-target="' + target + '"]').click();
+                } else if (action === 'open-left' || action === 'open-right') {
+                    fileInputTarget = action.endsWith('left') ? 'left' : 'right';
+                    fileInput.click();
+                }
+            });
+        });
+
+        // ===================== localStorage persistence (versioned) =====================
+        // Schema 演进策略：
+        //   - 写入永远带 version 字段
+        //   - 读取时按 version 跑 migrate 链
+        //   - 老用户 v1 key（diff-studio-v1）首次加载自动迁移到新 key 并清理
+        const STORAGE_KEY = 'diff-studio-v2';
+        const LEGACY_KEYS = ['diff-studio-v1'];
+        const SCHEMA_VERSION = 2;
+
+        // 默认 state —— 新用户 / 字段缺失时填这个
+        function defaultPersistedState() {
+            return {
+                version: SCHEMA_VERSION,
+                left: '',
+                right: '',
+                theme: 'dark',
+                font: 13,
+                toggles: {
+                    ignoreWs: false,
+                    ignoreCase: false,
+                    structural: false,
+                    collapse: true,
+                    wrap: false,
+                    autoCompare: true,
+                    sync: true
+                },
+                ignoreRules: []
+            };
+        }
+
+        // 从任意旧版本迁移到当前版本。每个版本递增一步，链式调用。
+        function migrate(data) {
+            const v = typeof data.version === 'number' ? data.version : 1;
+            let out = data;
+            // v1 → v2: 字段结构一致，仅补默认值 + version 标记
+            if (v < 2) {
+                const def = defaultPersistedState();
+                out = {
+                    version: 2,
+                    left: typeof out.left === 'string' ? out.left : def.left,
+                    right: typeof out.right === 'string' ? out.right : def.right,
+                    theme: out.theme || def.theme,
+                    font: out.font || def.font,
+                    toggles: Object.assign({}, def.toggles, out.toggles || {}),
+                    ignoreRules: Array.isArray(out.ignoreRules) ? out.ignoreRules.filter(s => typeof s === 'string') : []
+                };
+                // v1 默认 collapse=true 用 !== false 判断，这里统一一次
+                if (out.toggles.collapse === undefined) out.toggles.collapse = true;
+                if (out.toggles.autoCompare === undefined) out.toggles.autoCompare = true;
+                if (out.toggles.sync === undefined) out.toggles.sync = true;
+            }
+            // 未来 v2 → v3 在这里追加
+            return out;
+        }
+
+        function saveState() {
+            clearTimeout(App.schedule.saveTimer);
+            App.schedule.saveTimer = setTimeout(() => {
+                try {
+                    const payload = {
+                        version: SCHEMA_VERSION,
+                        left: leftInput.value,
+                        right: rightInput.value,
+                        theme: document.body.getAttribute('data-theme'),
+                        font: parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--font-mono-size')) || 13,
+                        toggles: {
+                            ignoreWs: ignoreWs.checked,
+                            ignoreCase: ignoreCase.checked,
+                            structural: structuralToggle.checked,
+                            collapse: collapseToggle.checked,
+                            wrap: wrapToggle.checked,
+                            autoCompare: autoCompareToggle.checked,
+                            sync: syncToggle.checked
+                        },
+                        ignoreRules: (App.state.ignoreRules || []).map(r => r.source)
+                    };
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+                } catch (e) {
+                    // localStorage 配额或不可用，静默
+                }
+            }, 600);
+        }
+
+        function applyPersistedState(s) {
+            if (typeof s.left === 'string') leftInput.value = s.left;
+            if (typeof s.right === 'string') rightInput.value = s.right;
+            if (s.theme) setTheme(s.theme);
+            if (s.font) setFontSize(s.font);
+            const t = s.toggles || {};
+            ignoreWs.checked = !!t.ignoreWs;
+            ignoreCase.checked = !!t.ignoreCase;
+            structuralToggle.checked = !!t.structural;
+            collapseToggle.checked = t.collapse !== false;
+            wrapToggle.checked = !!t.wrap;
+            if (t.wrap) document.body.classList.add('wrap-mode');
+            autoCompareToggle.checked = t.autoCompare !== false;
+            syncToggle.checked = t.sync !== false;
+            // 还原忽略规则：把 source 字符串数组编译回 RegExp
+            if (Array.isArray(s.ignoreRules)) {
+                const compiled = [];
+                for (const src of s.ignoreRules) {
+                    if (typeof src !== 'string' || !src.trim()) continue;
+                    try { compiled.push({ source: src, regex: new RegExp(src, 'g') }); }
+                    catch (e) { /* 跳过无效正则，避免一次坏数据阻塞加载 */ }
+                }
+                App.state.ignoreRules = compiled;
+            }
+        }
+
+        function loadState() {
+            try {
+                // 1) 当前 schema
+                let raw = localStorage.getItem(STORAGE_KEY);
+                if (raw) {
+                    const data = migrate(JSON.parse(raw));
+                    applyPersistedState(data);
+                    // 若发生过迁移，立刻把新版本写回
+                    if (data.version !== (JSON.parse(raw).version || 1)) saveState();
+                    return true;
+                }
+                // 2) 兼容老 key
+                for (const k of LEGACY_KEYS) {
+                    const legacyRaw = localStorage.getItem(k);
+                    if (!legacyRaw) continue;
+                    const data = migrate(JSON.parse(legacyRaw));
+                    applyPersistedState(data);
+                    // 写入新 key + 清理老 key
+                    try {
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                        localStorage.removeItem(k);
+                    } catch (e) { /* ignore */ }
+                    return true;
+                }
+                return false;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        // 输入即存
+        leftInput.addEventListener('input', () => { saveState(); });
+        rightInput.addEventListener('input', () => { saveState(); });
+        syncToggle.addEventListener('change', saveState);
+        autoCompareToggle.addEventListener('change', saveState);
+
+        // ===================== Init =====================
+        loadState();
+        updateMeta();
+        setTheme(document.body.getAttribute('data-theme') || 'dark');
+        updateNavCounter();
+        if (leftInput.value || rightInput.value) {
+            setTimeout(() => runCompare({ silent: true }), 50);
+        }
+    </script>
+</body>
+
+</html>
