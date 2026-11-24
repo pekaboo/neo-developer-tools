@@ -2,7 +2,9 @@
 
 Free online developer tools. No login, no ads, no tracking. Everything runs in the browser.
 
-Live site: [tools.orviak.com](https://tools.orviak.com)
+Live site: [Neo Developer Tools](https://pages.wangyitu.tech/neo-developer-tools/)
+
+**Featured:** [文本对比 · Text Set Compare](https://pages.wangyitu.tech/neo-developer-tools/tools/text-set-compare/) — compare multiple lists and highlight intersections and differences.
 
 ---
 

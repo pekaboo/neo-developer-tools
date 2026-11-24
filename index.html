@@ -356,11 +356,12 @@
         <path fill-rule="evenodd" d="M9 3.5a5.5 5.5 0 100 11 5.5 5.5 0 000-11zM2 9a7 7 0 1112.452 4.391l3.328 3.329a.75.75 0 11-1.06 1.06l-3.329-3.328A7 7 0 012 9z" clip-rule="evenodd" />
       </svg>
       <label for="search" class="visually-hidden">Search tools</label>
-      <input type="search" id="search" placeholder="Search tools, like yaml, jwt or regex" autocomplete="off" spellcheck="false" />
+      <input type="search" id="search" placeholder="Search tools · 文本对比, JSON, regex" autocomplete="off" spellcheck="false" />
       <kbd aria-hidden="true">/</kbd>
     </div>
     <div class="palette-foot">
-      <span>Most used</span>
+      <span>Quick access</span>
+      <a href="./tools/text-set-compare/">文本对比 · Text Set Compare</a>
       <a href="./tools/yaml-validator/">YAML validator</a>
       <a href="./tools/sql-formatter/">SQL formatter</a>
       <a href="./tools/json-formatter/">JSON formatter</a>
@@ -425,9 +426,9 @@
         <h3>Diff Checker</h3>
         <p>Compare two pieces of text and spot the differences.</p>
       </a>
-      <a href="./tools/text-set-compare/index.html" class="tool-card">
+      <a href="./tools/text-set-compare/" class="tool-card" data-keywords="文本比较 文本比对 文本差异 多组文本对比 多组对比 列表对比 集合对比 邮箱对比 邮件对比 订单号对比 交集 差集 并集 去重 维恩图 韦恩图 venn diff set difference email order deduplicate">
         <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/></svg></div>
-        <h3>Text Set Compare</h3>
+        <h3>文本对比 · Text Set Compare</h3>
         <p>Compare multiple lists, explore intersections, and highlight matching lines.</p>
       </a>
       <a href="./tools/markdown-to-html/" class="tool-card">
@@ -792,6 +793,13 @@
     var groups = Array.prototype.slice.call(document.querySelectorAll('.category-group'));
     var cards = Array.prototype.slice.call(document.querySelectorAll('.tool-card'));
     var total = cards.length;
+    var searchableText = cards.map(function (card) {
+      return normalizeSearch(card.textContent + ' ' + (card.getAttribute('data-keywords') || ''));
+    });
+
+    function normalizeSearch(value) {
+      return value.normalize('NFKC').toLowerCase().trim().replace(/\s+/g, ' ');
+    }
 
     function updateCounts() {
       groups.forEach(function (group) {
@@ -803,10 +811,11 @@
     }
 
     function filterTools() {
-      var query = input.value.trim().toLowerCase();
+      var query = normalizeSearch(input.value);
+      var terms = query ? query.split(' ') : [];
       var shown = 0;
-      cards.forEach(function (card) {
-        var match = !query || card.textContent.toLowerCase().indexOf(query) !== -1;
+      cards.forEach(function (card, index) {
+        var match = terms.every(function (term) { return searchableText[index].includes(term); });
         card.hidden = !match;
         if (match) shown++;
       });
